@@ -1,0 +1,284 @@
+@{
+    ViewData["Title"] = "Lập chuyến giao hàng tối ưu";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var tripDate = (DateTime)ViewBag.TripDate;
+    var shift = (string)ViewBag.Shift;
+    var shiftName = (string)ViewBag.ShiftDisplayName;
+    var pendingOrders = ViewBag.PendingOrders as List<BeautyShop.Models.Order> ?? new List<BeautyShop.Models.Order>();
+    var existingTrips = ViewBag.ExistingTrips as List<BeautyShop.Models.DeliveryTrip> ?? new List<BeautyShop.Models.DeliveryTrip>();
+    var shippers = ViewBag.Shippers as List<BeautyShop.Models.User> ?? new List<BeautyShop.Models.User>();
+    var maxOrders = (int)ViewBag.MaxOrdersPerTrip;
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">🚚 Điều phối & Lập chuyến giao hàng tối ưu</h2>
+        <p class="text-muted mb-0">Gom đơn theo khung giờ và cụm khu vực lân cận để tối ưu chi phí vận hành, loại bỏ quãng đường quay đầu</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Trips" class="btn btn-outline-primary fw-bold rounded-3 shadow-sm px-3 py-2 bg-white">
+            <i class="bi bi-card-checklist me-1"></i> Danh sách chuyến đã lập
+        </a>
+        <a asp-action="Zones" class="btn btn-light fw-bold rounded-3 border px-3 py-2 text-secondary">
+            <i class="bi bi-geo-alt me-1"></i> Danh mục Cụm & Khu vực
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>@TempData["SuccessMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>@TempData["ErrorMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- THANH LỌC NGÀY & CA GIAO -->
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-calendar3 me-1"></i> Chọn ngày giao hàng
+            </label>
+            <input type="date" name="date" class="form-control fw-bold" value="@tripDate.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </div>
+        <div class="col-md-5">
+            <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-clock-history me-1"></i> Chọn ca giao hàng
+            </label>
+            <select name="shift" class="form-select fw-bold" onchange="this.form.submit()">
+                <option value="Morning" selected="@(shift == "Morning")">Ca Sáng (08:00 - 12:00)</option>
+                <option value="Afternoon" selected="@(shift == "Afternoon")">Ca Chiều (13:00 - 17:00)</option>
+                <option value="Evening" selected="@(shift == "Evening")">Ca Tối (18:00 - 21:00)</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary fw-bold w-100 py-2 rounded-3">
+                <i class="bi bi-search me-1"></i> Xem danh sách chờ
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- GIẢI THÍCH QUY TẮC NGHIỆP VỤ & HẠN CHẾ HEURISTIC -->
+<div class="alert alert-warning py-3 rounded-4 border-0 mb-4 bg-warning-subtle text-dark">
+    <div class="d-flex align-items-start gap-3">
+        <i class="bi bi-lightbulb-fill text-warning fs-3 mt-1"></i>
+        <div class="small">
+            <div class="fw-800 fs-6 mb-1 text-dark">Quy tắc nghiệp vụ gom chuyến tối ưu:</div>
+            <ul class="mb-1 ps-3">
+                <li><strong>Giờ chốt ca mặc định: 10:00 sáng.</strong> Lý do: Cần thời gian kiểm đếm, xuất kho và đóng gói bao bì hoàn chỉnh trước khi shipper nhận hàng đi ca Chiều. Đơn đặt sau 10:00 được chuyển sang ca Sáng hôm sau.</li>
+                <li><strong>Thuật toán gom chuyến Heuristic:</strong> Gom các đơn cùng ngày, cùng ca và cùng cụm khu vực lân cận vào một chuyến (giới hạn tối đa <strong>@maxOrders đơn/chuyến</strong>). Nếu cụm &gt; @maxOrders đơn sẽ tự động tách chuyến. Hai cụm kề nhau chỉ ghép chung khi tổng số đơn &le; @maxOrders.</li>
+                <li><strong>Tránh quay đầu xe:</strong> Các điểm dừng trong chuyến được sắp xếp ưu tiên theo cùng khu vực để giao dứt điểm từng khu vực rồi mới di chuyển sang khu vực kế tiếp.</li>
+                <li><em class="text-danger">Hạn chế: Đây là thuật toán Heuristic gom nhóm dựa trên cấu hình phân cụm hành chính nội bộ, không tích hợp API bản đồ số hay định vị GPS ngoại vi.</em></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- HÀNG NÚT THAO TÁC GOM TỰ ĐỘNG & THỦ CÔNG -->
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h5 class="fw-800 mb-1 text-dark">
+                📦 Đơn hàng sẵn sàng giao: <span class="text-primary">@pendingOrders.Count đơn</span>
+            </h5>
+            <p class="text-muted small mb-0">Ca đang chọn: <strong>@shiftName</strong> — Ngày: <strong>@tripDate.ToString("dd/MM/yyyy")</strong></p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (pendingOrders.Any())
+            {
+                <form asp-action="AutoBatch" method="post" class="d-inline" onsubmit="return confirm('Hệ thống sẽ tự động phân cụm và tạo các chuyến giao tối ưu (@maxOrders đơn/chuyến). Bạn có muốn tiếp tục?');">
+                    <input type="hidden" name="date" value="@tripDate.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="shift" value="@shift" />
+                    <input type="hidden" name="maxOrders" value="@maxOrders" />
+                    <button type="submit" class="btn btn-success fw-800 px-4 py-2 rounded-3 shadow-sm">
+                        <i class="bi bi-magic me-1"></i> Gom chuyến tự động
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- BẢNG DANH SÁCH ĐƠN CHỜ GIAO TRONG CA -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white mb-4">
+    <div class="card-header bg-light border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-list-task me-2 text-primary"></i>Chi tiết các đơn hàng chờ điều phối</h6>
+        <span class="badge bg-primary px-3 py-2 rounded-pill fw-bold">Tổng: @pendingOrders.Count đơn</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-secondary small fw-bold text-uppercase">
+                <tr>
+                    <th class="ps-4">Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Khu vực giao (Zone)</th>
+                    <th>Cụm khu vực (Cluster)</th>
+                    <th>Địa chỉ nhận hàng</th>
+                    <th>Hình thức</th>
+                    <th>Tiền thu COD</th>
+                    <th>Lần giao lại</th>
+                    <th class="pe-4 text-center">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (pendingOrders.Any())
+                {
+                    foreach (var o in pendingOrders)
+                    {
+                        <tr>
+                            <td class="ps-4 font-monospace fw-bold text-primary">#@o.OrderCode</td>
+                            <td>
+                                <div class="fw-bold text-dark">@o.CustomerName</div>
+                                <div class="text-muted small">@o.PhoneNumber</div>
+                            </td>
+                            <td>
+                                @if (o.DeliveryZone != null)
+                                {
+                                    <span class="badge bg-info-subtle text-info fw-bold">@o.DeliveryZone.ZoneName</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary">Chưa nhận diện</span>
+                                }
+                            </td>
+                            <td>
+                                @if (o.DeliveryZone != null)
+                                {
+                                    <span class="badge bg-primary-subtle text-primary font-monospace">@o.DeliveryZone.ClusterCode</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td class="small text-secondary" style="max-width: 280px;">@o.ShippingAddress</td>
+                            <td>
+                                @if (o.PaymentMethod == "COD")
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis fw-bold">💵 COD</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success-subtle text-success fw-bold">💳 Đã trả trước</span>
+                                }
+                            </td>
+                            <td class="fw-bold text-danger">
+                                @(o.PaymentMethod == "COD" ? o.FinalAmount.ToString("N0") + " đ" : "0 đ")
+                            </td>
+                            <td>
+                                @if (o.FailedDeliveryAttempts > 0)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger fw-bold">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Lần @o.FailedDeliveryAttempts
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light text-muted border">Lần 1</span>
+                                }
+                            </td>
+                            <td class="pe-4 text-center">
+                                <span class="badge bg-warning-subtle text-warning-emphasis px-3 py-1 rounded-pill fw-bold">
+                                    Chờ giao
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-check2-circle fs-1 text-success d-block mb-2"></i>
+                            Không có đơn hàng nào chờ giao trong ca này.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- CÁC CHUYẾN ĐÃ LẬP CHO CA NÀY -->
+@if (existingTrips.Any())
+{
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        <div class="card-header bg-light border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold text-dark mb-0"><i class="bi bi-truck me-2 text-success"></i>Các chuyến giao đã lập trong ca này (@existingTrips.Count chuyến)</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-secondary small fw-bold text-uppercase">
+                    <tr>
+                        <th class="ps-4">Mã chuyến</th>
+                        <th>Cụm phục vụ</th>
+                        <th>Shipper phụ trách</th>
+                        <th>Số đơn</th>
+                        <th>Tiền COD dự kiến</th>
+                        <th>Tiền COD thực thu</th>
+                        <th>Trạng thái chuyến</th>
+                        <th class="pe-4 text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in existingTrips)
+                    {
+                        <tr>
+                            <td class="ps-4 font-monospace fw-bold text-primary">
+                                <a asp-action="Detail" asp-route-id="@t.Id" class="text-decoration-none">@t.TripCode</a>
+                            </td>
+                            <td><span class="badge bg-info-subtle text-info fw-bold">@t.ClusterCode</span></td>
+                            <td>
+                                @if (t.ShipperUser != null)
+                                {
+                                    <span class="fw-bold text-dark"><i class="bi bi-person-fill text-primary me-1"></i>@t.ShipperUser.FullName</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary">Chưa gán</span>
+                                }
+                            </td>
+                            <td class="fw-bold">@t.TotalOrders đơn</td>
+                            <td class="fw-bold text-dark">@t.TotalCodExpected.ToString("N0") đ</td>
+                            <td class="fw-bold text-success">@t.TotalCodCollected.ToString("N0") đ</td>
+                            <td>
+                                @switch (t.Status)
+                                {
+                                    case "Draft":
+                                        <span class="badge bg-secondary-subtle text-secondary px-3 py-1 rounded-pill fw-bold">Nháp</span>
+                                        break;
+                                    case "Assigned":
+                                        <span class="badge bg-primary-subtle text-primary px-3 py-1 rounded-pill fw-bold">Đã gán shipper</span>
+                                        break;
+                                    case "InTransit":
+                                        <span class="badge bg-warning-subtle text-warning px-3 py-1 rounded-pill fw-bold">Đang giao</span>
+                                        break;
+                                    case "Completed":
+                                        <span class="badge bg-success-subtle text-success px-3 py-1 rounded-pill fw-bold">Hoàn tất</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="pe-4 text-end">
+                                <a asp-action="Detail" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary fw-bold rounded-3">
+                                    <i class="bi bi-eye me-1"></i> Xem chi tiết
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

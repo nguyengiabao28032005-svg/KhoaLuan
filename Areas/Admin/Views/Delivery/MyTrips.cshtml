@@ -1,0 +1,279 @@
+@model IEnumerable<BeautyShop.Models.DeliveryTrip>
+@{
+    ViewData["Title"] = "Chuyến giao hàng của tôi";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var tripDate = (DateTime)ViewBag.TripDate;
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">🛵 Chuyến giao hàng của tôi</h2>
+        <p class="text-muted mb-0">Lịch trình điểm dừng giao hàng trong ngày: <strong>@tripDate.ToString("dd/MM/yyyy")</strong></p>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex gap-2">
+            <input type="date" name="date" class="form-control form-control-sm" value="@tripDate.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </form>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>@TempData["SuccessMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>@TempData["ErrorMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+        <i class="bi bi-bicycle text-muted fs-1 mb-3"></i>
+        <h5 class="fw-bold text-dark">Bạn chưa có chuyến giao hàng nào trong ngày @tripDate.ToString("dd/MM/yyyy")</h5>
+        <p class="text-muted mb-0">Vui lòng liên hệ Quản lý điều phối để được xếp chuyến giao hàng.</p>
+    </div>
+}
+else
+{
+    foreach (var trip in Model)
+    {
+        var stops = trip.Stops.OrderBy(s => s.StopOrder).ToList();
+        var completedCount = stops.Count(s => s.StopStatus == "Success");
+        var failedCount = stops.Count(s => s.StopStatus == "Failed");
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
+            <!-- HEADER CHUYẾN -->
+            <div class="card-header bg-light border-0 py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fs-5 fw-900 font-monospace text-primary">@trip.TripCode</span>
+                        <span class="badge @(trip.Status == "Completed" ? "bg-success" : (trip.Status == "InTransit" ? "bg-warning" : "bg-primary")) px-3 py-1 rounded-pill fw-bold">
+                            @(trip.Status == "InTransit" ? "Đang giao" : (trip.Status == "Completed" ? "Đã xong" : "Chờ xuất phát"))
+                        </span>
+                        <span class="badge bg-info-subtle text-info fw-bold">@DeliveryConfig.GetShiftDisplayName(trip.Shift)</span>
+                        <span class="badge bg-secondary-subtle text-secondary font-monospace">@trip.ClusterCode</span>
+                    </div>
+                    <div class="small text-muted mt-1">
+                        Tiến độ: <strong>@completedCount/@stops.Count</strong> thành công | Tiền COD thu được: <strong class="text-success">@trip.TotalCodCollected.ToString("N0") đ</strong> / @trip.TotalCodExpected.ToString("N0") đ
+                    </div>
+                </div>
+                <div>
+                    @if (trip.Status == "Assigned" || trip.Status == "Draft")
+                    {
+                        <form asp-action="StartTrip" method="post" class="d-inline">
+                            <input type="hidden" name="tripId" value="@trip.Id" />
+                            <button type="submit" class="btn btn-warning fw-800 rounded-3 shadow-sm px-4">
+                                <i class="bi bi-play-circle-fill me-1"></i> Xuất phát đi giao
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            <!-- DANH SÁCH ĐIỂM DỪNG CỦA SHIPPER -->
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    @foreach (var stop in stops)
+                    {
+                        var order = stop.Order;
+                        bool isFinished = stop.StopStatus == "Success" || stop.StopStatus == "Failed" || stop.StopStatus == "Removed";
+
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 rounded-4 border p-3 @(stop.StopStatus == "Success" ? "border-success bg-success-subtle" : (stop.StopStatus == "Failed" ? "border-danger bg-danger-subtle" : "border-light-subtle shadow-sm bg-white"))">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge rounded-circle bg-primary text-white fs-6 fw-bold p-2" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">
+                                            @stop.StopOrder
+                                        </span>
+                                        <span class="fw-bold font-monospace text-dark">#@(order?.OrderCode ?? stop.OrderId.ToString())</span>
+                                    </div>
+                                    <div>
+                                        @if (stop.StopStatus == "Success")
+                                        {
+                                            <span class="badge bg-success text-white fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Đã giao</span>
+                                        }
+                                        else if (stop.StopStatus == "Failed")
+                                        {
+                                            <span class="badge bg-danger text-white fw-bold"><i class="bi bi-x-circle-fill me-1"></i>Thất bại</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark fw-bold">Chờ giao</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="fw-800 text-dark fs-6">@(order?.CustomerName ?? "Khách hàng")</div>
+                                    <div class="text-primary fw-bold small">
+                                        <i class="bi bi-telephone-fill me-1"></i>
+                                        <a href="tel:@(order?.PhoneNumber)" class="text-decoration-none">@(order?.PhoneNumber ?? "—")</a>
+                                    </div>
+                                </div>
+
+                                <div class="small text-secondary mb-2">
+                                    <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+                                    <strong>[@(order?.DeliveryZone?.ZoneName ?? "Khu vực")]</strong> @(order?.ShippingAddress ?? "—")
+                                </div>
+
+                                <div class="d-flex align-items-center justify-content-between py-2 border-top border-bottom my-2 small">
+                                    <span class="text-muted fw-bold">Thu tiền COD:</span>
+                                    <span class="fw-900 fs-6 @(order?.PaymentMethod == "COD" ? "text-danger" : "text-success")">
+                                        @(order?.PaymentMethod == "COD" ? stop.CodExpectedAmount.ToString("N0") + " đ" : "0 đ (Đã thanh toán)")
+                                    </span>
+                                </div>
+
+                                @if (!isFinished && trip.Status == "InTransit")
+                                {
+                                    <div class="d-flex gap-2 mt-auto pt-2">
+                                        <button type="button" class="btn btn-sm btn-success fw-bold w-100 py-2 rounded-3 shadow-sm"
+                                                onclick="openSuccessModal(@stop.Id, '#@(order?.OrderCode)', @stop.CodExpectedAmount, '@(order?.PaymentMethod)')">
+                                            <i class="bi bi-check-circle me-1"></i> Giao thành công
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger fw-bold w-100 py-2 rounded-3"
+                                                onclick="openFailedModal(@stop.Id, '#@(order?.OrderCode)')">
+                                            <i class="bi bi-x-circle me-1"></i> Thất bại
+                                        </button>
+                                    </div>
+                                }
+                                else if (stop.StopStatus == "Success")
+                                {
+                                    <div class="small text-success fw-bold mt-2">
+                                        <i class="bi bi-cash-stack me-1"></i> Đã thu: @stop.CodCollectedAmount.ToString("N0") đ
+                                    </div>
+                                }
+                                else if (stop.StopStatus == "Failed")
+                                {
+                                    <div class="small text-danger fw-bold mt-2">
+                                        Lý do: @stop.FailureReason
+                                        @if (!string.IsNullOrEmpty(stop.Notes))
+                                        {
+                                            <span class="d-block text-muted fw-normal">(@stop.Notes)</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<!-- MODAL GIAO THÀNH CÔNG -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-success text-white rounded-top-4">
+                <h5 class="modal-title fw-800"><i class="bi bi-check-circle-fill me-2"></i>Xác nhận Giao hàng thành công</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="UpdateStop" method="post">
+                <input type="hidden" name="stopId" id="modal-success-stopId" />
+                <input type="hidden" name="status" value="Success" />
+                <div class="modal-body p-4">
+                    <p class="mb-3">Đơn hàng: <strong id="modal-success-orderCode" class="text-primary font-monospace"></strong></p>
+                    <div class="mb-3" id="modal-cod-group">
+                        <label class="form-label fw-bold small text-secondary">Số tiền COD thực thu của khách (VNĐ) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" name="codCollected" id="modal-success-cod" class="form-control py-2 fw-bold text-success fs-5 text-end" required />
+                            <span class="input-group-text bg-light fw-bold">đ</span>
+                        </div>
+                        <small class="text-muted">Đơn không COD sẽ tự động ghi nhận là 0đ.</small>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-secondary">Ghi chú giao hàng (nếu có)</label>
+                        <input type="text" name="notes" class="form-control" placeholder="Giao cho người nhà nhận hộ, bảo vệ giữ hộ..." />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold rounded-3" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-3 px-4 shadow-sm">
+                        <i class="bi bi-check-circle-fill me-1"></i> Lưu kết quả
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL GIAO THẤT BẠI -->
+<div class="modal fade" id="failedModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-danger text-white rounded-top-4">
+                <h5 class="modal-title fw-800"><i class="bi bi-exclamation-triangle-fill me-2"></i>Báo cáo Giao hàng thất bại</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="UpdateStop" method="post">
+                <input type="hidden" name="stopId" id="modal-failed-stopId" />
+                <input type="hidden" name="status" value="Failed" />
+                <div class="modal-body p-4">
+                    <p class="mb-3">Đơn hàng: <strong id="modal-failed-orderCode" class="text-primary font-monospace"></strong></p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Bắt buộc chọn lý do thất bại <span class="text-danger">*</span></label>
+                        <select name="failureReason" class="form-select py-2 fw-bold" required>
+                            <option value="">-- Chọn lý do --</option>
+                            <option value="Khách hẹn giao lại ca sau">Khách hẹn giao lại ca sau / ngày khác</option>
+                            <option value="Gọi điện nhiều lần không nghe máy">Gọi điện nhiều lần không nghe máy (Thuê bao)</option>
+                            <option value="Địa chỉ không chính xác / Không tìm thấy nhà">Địa chỉ không chính xác / Không tìm thấy nhà</option>
+                            <option value="Khách từ chối nhận hàng (Đổi ý)">Khách từ chối nhận hàng (Đổi ý / Không có tiền)</option>
+                            <option value="Thời tiết mưa bão / Đường ngập không thể tiếp cận">Thời tiết mưa bão / Đường ngập không thể tiếp cận</option>
+                            <option value="Lý do khác">Lý do khác</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-secondary">Ghi chú chi tiết</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Chi tiết thời gian gọi, phản hồi của khách..." required></textarea>
+                        <small class="text-muted">Đơn hàng sẽ tự động quay lại hàng chờ điều phối cho chuyến tiếp theo.</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold rounded-3" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger fw-bold rounded-3 px-4 shadow-sm">
+                        <i class="bi bi-x-circle-fill me-1"></i> Xác nhận thất bại
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openSuccessModal(stopId, orderCode, expectedCod, paymentMethod) {
+        document.getElementById('modal-success-stopId').value = stopId;
+        document.getElementById('modal-success-orderCode').textContent = orderCode;
+        var codInput = document.getElementById('modal-success-cod');
+        var codGroup = document.getElementById('modal-cod-group');
+        
+        if (paymentMethod === 'COD') {
+            codInput.value = expectedCod;
+            codInput.readOnly = false;
+            codGroup.classList.remove('d-none');
+        } else {
+            codInput.value = 0;
+            codInput.readOnly = true;
+            codGroup.classList.add('d-none');
+        }
+        var modal = new bootstrap.Modal(document.getElementById('successModal'));
+        modal.show();
+    }
+
+    function openFailedModal(stopId, orderCode) {
+        document.getElementById('modal-failed-stopId').value = stopId;
+        document.getElementById('modal-failed-orderCode').textContent = orderCode;
+        var modal = new bootstrap.Modal(document.getElementById('failedModal'));
+        modal.show();
+    }
+</script>

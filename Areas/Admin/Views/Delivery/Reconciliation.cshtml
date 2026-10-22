@@ -1,0 +1,379 @@
+@model BeautyShop.Models.DailyReconciliation
+@{
+    ViewData["Title"] = "Đối soát tiền mặt cuối ngày";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var recDate = (DateTime)ViewBag.RecDate;
+    var settledTrips = ViewBag.SettledTrips as List<BeautyShop.Models.DeliveryTrip> ?? new List<BeautyShop.Models.DeliveryTrip>();
+    bool isAdmin = (bool)(ViewBag.IsAdmin ?? false);
+
+    decimal totalCollectedByShippers = settledTrips.Sum(t => t.SettlementReceivedAmount ?? t.TotalCodCollected);
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">📊 Đối soát tiền mặt & Chốt sổ cuối ngày</h2>
+        <p class="text-muted mb-0">Thu ngân tổng hợp tiền COD các chuyến nộp cho Chủ cửa hàng (Admin) kèm thống kê hàng bán chạy/chậm</p>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex gap-2">
+            <input type="date" name="date" class="form-control form-control-sm" value="@recDate.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </form>
+        <a asp-action="Settlement" class="btn btn-outline-secondary fw-bold rounded-3 shadow-sm px-3 py-2 bg-white">
+            <i class="bi bi-cash me-1"></i> Bảng nộp tiền chuyến
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>@TempData["SuccessMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>@TempData["ErrorMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- THÔNG TIN TỔNG QUAN ĐỐI SOÁT NGÀY -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="text-muted small fw-bold text-uppercase mb-1">Chuyến đã quyết toán</div>
+            <div class="fw-900 fs-3 text-dark">@settledTrips.Count chuyến</div>
+            <div class="text-secondary small mt-1">Ngày: <strong>@recDate.ToString("dd/MM/yyyy")</strong></div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="text-muted small fw-bold text-uppercase mb-1">Thu ngân đã nhận từ Shipper</div>
+            <div class="fw-900 fs-3 text-primary">@totalCollectedByShippers.ToString("N0") đ</div>
+            <div class="text-secondary small mt-1">Tổng tiền mặt đang giữ</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="text-muted small fw-bold text-uppercase mb-1">Số tiền nộp cho Admin</div>
+            <div class="fw-900 fs-3 text-success">
+                @(Model != null ? Model.TotalCashSubmitted.ToString("N0") + " đ" : "Chưa nộp")
+            </div>
+            <div class="small mt-1">
+                @if (Model != null)
+                {
+                    @if (Model.DifferenceAmount == 0)
+                    {
+                        <span class="badge bg-success-subtle text-success fw-bold">Khớp 100%</span>
+                    }
+                    else if (Model.DifferenceAmount < 0)
+                    {
+                        <span class="badge bg-danger-subtle text-danger fw-bold">Thiếu @Math.Abs(Model.DifferenceAmount).ToString("N0") đ</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-info-subtle text-info fw-bold">Dư @Model.DifferenceAmount.ToString("N0") đ</span>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="text-muted small fw-bold text-uppercase mb-1">Trạng thái chốt sổ</div>
+            <div class="mt-1">
+                @if (Model != null && Model.Status == "Approved")
+                {
+                    <span class="badge bg-success fs-6 px-3 py-2 rounded-pill fw-bold">
+                        <i class="bi bi-shield-lock-fill me-1"></i> ĐÃ KHÓA SỔ
+                    </span>
+                    <div class="small text-muted mt-2">Duyệt bởi: <strong>@(Model.AdminApprovedUser?.FullName ?? "Admin")</strong> lúc @Model.ApprovedAt?.ToString("HH:mm dd/MM")</div>
+                }
+                else if (Model != null && Model.Status == "Draft")
+                {
+                    <span class="badge bg-warning text-dark fs-6 px-3 py-2 rounded-pill fw-bold">
+                        <i class="bi bi-hourglass-split me-1"></i> CHỜ ADMIN DUYỆT
+                    </span>
+                    <div class="small text-muted mt-2">Thu ngân đã lập phiếu chốt</div>
+                }
+                else
+                {
+                    <span class="badge bg-secondary fs-6 px-3 py-2 rounded-pill fw-bold">
+                        CHƯA CHỐT NGÀY
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- NÚT HÀNH ĐỘNG CỦA THU NGÂN VÀ ADMIN -->
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h5 class="fw-800 mb-1 text-dark">
+                Bảng đối soát: <span class="font-monospace text-primary">REC-@recDate.ToString("yyyyMMdd")</span>
+            </h5>
+            <p class="text-muted small mb-0">Mỗi bước có người thực hiện, thời gian và trạng thái xác nhận. Sau khi Admin duyệt chốt sổ thì không thể chỉnh sửa.</p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (Model == null || Model.Status == "Draft")
+            {
+                <button type="button" class="btn btn-primary fw-800 px-4 py-2 rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createRecModal">
+                    <i class="bi bi-file-earmark-plus me-1"></i> Thu ngân: Nộp tiền cuối ngày
+                </button>
+            }
+
+            @if (Model != null && Model.Status == "Draft" && isAdmin)
+            {
+                <form asp-action="ApproveReconciliation" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn phê duyệt và KHÓA SỔ bảng đối soát này? Sau khi khóa sổ sẽ không thể chỉnh sửa số liệu.');">
+                    <input type="hidden" name="reconciliationId" value="@Model.Id" />
+                    <button type="submit" class="btn btn-success fw-800 px-4 py-2 rounded-3 shadow-sm">
+                        <i class="bi bi-shield-check me-1"></i> Chủ cửa hàng: Duyệt & Khóa sổ
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- BẢNG THỐNG KÊ SẢN PHẨM BÁN CHẠY VÀ BÁN CHẬM TRONG NGÀY (JSON PARSED) -->
+@if (Model != null)
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <h6 class="fw-bold text-success mb-3"><i class="bi bi-graph-up-arrow me-2"></i>Top sản phẩm bán chạy trong ngày</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light small">
+                            <tr>
+                                <th>Tên sản phẩm</th>
+                                <th class="text-center">Số lượng bán</th>
+                                <th class="text-end">Doanh thu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!string.IsNullOrEmpty(Model.TopSellingProductsJson))
+                            {
+                                try
+                                {
+                                    var topItems = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(Model.TopSellingProductsJson);
+                                    if (topItems != null && topItems.Any())
+                                    {
+                                        foreach (var item in topItems)
+                                        {
+                                            <tr>
+                                                <td class="fw-bold text-dark">@item.GetProperty("ProductName").GetString()</td>
+                                                <td class="text-center fw-bold text-success">@item.GetProperty("Quantity").GetInt32() sp</td>
+                                                <td class="text-end fw-bold">@item.GetProperty("Revenue").GetDecimal().ToString("N0") đ</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr><td colspan="3" class="text-muted text-center py-2">Chưa có số liệu</td></tr>
+                                    }
+                                }
+                                catch
+                                {
+                                    <tr><td colspan="3" class="text-muted text-center py-2">Dữ liệu không khả dụng</td></tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="3" class="text-muted text-center py-2">Chưa có số liệu bán hàng</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <h6 class="fw-bold text-warning mb-3"><i class="bi bi-graph-down-arrow me-2"></i>Sản phẩm bán chậm trong ngày</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light small">
+                            <tr>
+                                <th>Tên sản phẩm</th>
+                                <th class="text-center">Số lượng bán</th>
+                                <th class="text-end">Doanh thu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!string.IsNullOrEmpty(Model.SlowSellingProductsJson))
+                            {
+                                try
+                                {
+                                    var slowItems = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(Model.SlowSellingProductsJson);
+                                    if (slowItems != null && slowItems.Any())
+                                    {
+                                        foreach (var item in slowItems)
+                                        {
+                                            <tr>
+                                                <td class="fw-bold text-dark">@item.GetProperty("ProductName").GetString()</td>
+                                                <td class="text-center fw-bold text-muted">@item.GetProperty("Quantity").GetInt32() sp</td>
+                                                <td class="text-end fw-bold">@item.GetProperty("Revenue").GetDecimal().ToString("N0") đ</td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr><td colspan="3" class="text-muted text-center py-2">Chưa có số liệu</td></tr>
+                                    }
+                                }
+                                catch
+                                {
+                                    <tr><td colspan="3" class="text-muted text-center py-2">Dữ liệu không khả dụng</td></tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="3" class="text-muted text-center py-2">Chưa có số liệu bán hàng</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- DANH SÁCH CÁC CHUYẾN ĐÃ NỘP TIỀN ĐƯỢC TỔNG HỢP -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+    <div class="card-header bg-light border-0 py-3 px-4">
+        <h6 class="fw-bold text-dark mb-0"><i class="bi bi-check2-circle text-success me-2"></i>Chi tiết các chuyến đã nộp tiền đưa vào đối soát</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-secondary small fw-bold text-uppercase">
+                <tr>
+                    <th class="ps-4">Mã chuyến</th>
+                    <th>Ca giao</th>
+                    <th>Shipper</th>
+                    <th>Đơn thành công</th>
+                    <th>Đơn thất bại</th>
+                    <th>Tiền COD thực thu</th>
+                    <th>Tiền nộp cho thu ngân</th>
+                    <th>Chênh lệch</th>
+                    <th class="pe-4 text-end">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (settledTrips.Any())
+                {
+                    foreach (var t in settledTrips)
+                    {
+                        var sc = t.Stops.Count(s => s.StopStatus == "Success");
+                        var fc = t.Stops.Count(s => s.StopStatus == "Failed");
+                        <tr>
+                            <td class="ps-4 font-monospace fw-bold text-primary">@t.TripCode</td>
+                            <td>@DeliveryConfig.GetShiftDisplayName(t.Shift)</td>
+                            <td class="fw-bold text-dark">@(t.ShipperUser?.FullName ?? "—")</td>
+                            <td class="fw-bold text-success">@sc đơn</td>
+                            <td class="fw-bold text-danger">@fc đơn</td>
+                            <td class="fw-bold text-dark">@t.TotalCodCollected.ToString("N0") đ</td>
+                            <td class="fw-bold text-primary">@((t.SettlementReceivedAmount ?? t.TotalCodCollected).ToString("N0")) đ</td>
+                            <td>
+                                @if (t.SettlementDifference.HasValue && t.SettlementDifference.Value != 0)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger fw-bold">@t.SettlementDifference.Value.ToString("N0") đ</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success-subtle text-success fw-bold">Khớp</span>
+                                }
+                            </td>
+                            <td class="pe-4 text-end">
+                                <span class="badge bg-success-subtle text-success fw-bold">Đã quyết toán</span>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">
+                            Chưa có chuyến giao hàng nào hoàn tất nộp tiền cho thu ngân trong ngày này.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL THU NGÂN NỘP TIỀN CUỐI NGÀY CHO ADMIN -->
+<div class="modal fade" id="createRecModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-light rounded-top-4">
+                <h5 class="modal-title fw-800 text-dark">
+                    <i class="bi bi-cash-coin text-success me-2"></i>Thu ngân: Nộp tiền mặt cuối ngày
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="CreateReconciliation" method="post">
+                <input type="hidden" name="date" value="@recDate.ToString("yyyy-MM-dd")" />
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold mb-0">Ngày chốt sổ:</label>
+                        <div class="fw-bold fs-6 text-dark">@recDate.ToString("dd/MM/yyyy") (Tổng @settledTrips.Count chuyến đã nộp tiền)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold mb-0">Tổng tiền mặt thu ngân đã nhận từ Shipper:</label>
+                        <div class="fw-900 fs-4 text-primary" id="rec-total-collected">@totalCollectedByShippers.ToString("N0") đ</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Số tiền mặt thực nộp cho Chủ cửa hàng (Admin) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" name="totalCashSubmitted" id="rec-cash-submitted" class="form-control py-2 fw-bold text-success fs-5 text-end"
+                                   value="@totalCollectedByShippers" required oninput="calcRecDifference(@totalCollectedByShippers)" />
+                            <span class="input-group-text bg-light fw-bold">đ</span>
+                        </div>
+                    </div>
+                    <div class="alert alert-secondary py-2 small mb-3" id="recDiffAlert">
+                        Chênh lệch nộp: <strong id="recDiffText">Khớp 100% (0 đ)</strong>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-secondary">Giải trình chênh lệch (nếu có)</label>
+                        <textarea name="differenceReason" class="form-control" rows="2" placeholder="Ghi chú chi tiết nếu số tiền nộp lệch so với tổng thu..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold rounded-3" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-3 px-4 shadow-sm">
+                        <i class="bi bi-check-circle-fill me-1"></i> Lập bảng nộp tiền
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function calcRecDifference(totalReceived) {
+        var submitted = parseFloat(document.getElementById('rec-cash-submitted').value) || 0;
+        var diff = submitted - totalReceived;
+        var diffText = document.getElementById('recDiffText');
+        var diffAlert = document.getElementById('recDiffAlert');
+
+        if (diff === 0) {
+            diffText.textContent = 'Khớp 100% (0 đ)';
+            diffAlert.className = 'alert alert-success py-2 small mb-3';
+        } else if (diff < 0) {
+            diffText.textContent = 'Thiếu ' + Math.Abs(diff).toLocaleString('vi-VN') + ' đ';
+            diffAlert.className = 'alert alert-danger py-2 small mb-3';
+        } else {
+            diffText.textContent = 'Thừa ' + diff.toLocaleString('vi-VN') + ' đ';
+            diffAlert.className = 'alert alert-info py-2 small mb-3';
+        }
+    }
+</script>

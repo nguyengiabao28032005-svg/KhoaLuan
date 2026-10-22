@@ -1,0 +1,121 @@
+@model BeautyShop.ViewModels.CreateProductViewModel
+
+@{
+    ViewData["Title"] = "Thêm sản phẩm";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid px-4 py-4" style="max-width: 960px;">
+    <div class="mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a asp-action="Index" class="text-decoration-none">Sản phẩm</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Thêm mới</li>
+            </ol>
+        </nav>
+        <h3 class="fw-bold text-dark"><i class="bi bi-plus-circle me-2 text-success"></i>Thêm sản phẩm mới</h3>
+        <p class="text-muted small mb-0">Khởi tạo thông tin sản phẩm và phân loại ban đầu</p>
+    </div>
+
+    <!-- Thông báo hướng dẫn quy trình nghiệp vụ thực tế -->
+    <div class="alert alert-info border-0 shadow-sm rounded-3 mb-4 d-flex align-items-start gap-3">
+        <i class="bi bi-info-circle-fill text-primary fs-4 mt-1"></i>
+        <div>
+            <div class="fw-bold text-dark">Quy trình quản lý giá & tồn kho thực tế:</div>
+            <div class="small text-secondary mt-1">
+                1. <strong>Tạo sản phẩm & phân loại:</strong> Chỉ lưu thông tin mô tả, danh mục, thương hiệu, dung tích và màu sắc.<br />
+                2. <strong>Nhập hàng qua kho:</strong> Giá vốn và số lượng tồn kho sẽ được ghi nhận chính xác theo từng lô qua <strong>Phiếu nhập kho</strong>.<br />
+                3. <strong>Thiết lập giá bán:</strong> Sau khi có hàng tồn kho, quản trị viên sẽ cài đặt giá bán lẻ và giá sỉ tại màn hình <strong>Thiết lập giá bán</strong>.
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <form asp-action="Create" method="post">
+                <div asp-validation-summary="All" class="alert alert-danger small mb-3 fw-bold" style="display: @(ViewData.ModelState.IsValid ? "none" : "block");"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Name" class="form-label fw-semibold small text-secondary">Tên sản phẩm <span class="text-danger">*</span></label>
+                    <input asp-for="Name" class="form-control py-2 shadow-sm" placeholder="Nhập tên sản phẩm đầy đủ..." required />
+                    <span asp-validation-for="Name" class="text-danger small mt-1 d-block"></span>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="CategoryId" class="form-label fw-semibold small text-secondary">Danh mục ngành hàng <span class="text-danger">*</span></label>
+                        <select asp-for="CategoryId" class="form-select py-2 shadow-sm" asp-items="ViewBag.CategoryId" required>
+                            <option value="">-- Chọn danh mục phụ trách --</option>
+                        </select>
+                        <span asp-validation-for="CategoryId" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="BrandId" class="form-label fw-semibold small text-secondary">Thương hiệu nhãn hàng <span class="text-danger">*</span></label>
+                        <select asp-for="BrandId" class="form-select py-2 shadow-sm" asp-items="ViewBag.BrandId" required>
+                            <option value="">-- Chọn thương hiệu sản xuất --</option>
+                        </select>
+                        <span asp-validation-for="BrandId" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                </div>
+
+                <!-- Phân loại ban đầu cho biến thể mặc định -->
+                <div class="p-3 mb-4 rounded-3" style="background-color: #f8f9fa; border: 1px solid #e2e8f0;">
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-boxes me-2 text-primary"></i>Phân loại ban đầu (Thuộc tính biến thể mặc định)</h6>
+                    <p class="text-muted small mb-3">Tùy chọn thuộc tính phân loại của sản phẩm. Bạn có thể thêm nhiều phân loại khác sau khi tạo.</p>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-secondary"><i class="bi bi-droplet me-1 text-info"></i>Dung tích / Kích thước (Volume)</label>
+                            <input asp-for="Volume" class="form-control py-2 shadow-sm" placeholder="Ví dụ: 150ml, 50g, 30ml..." />
+                            <small class="text-muted fst-italic">Để trống nếu sản phẩm không phân loại theo dung tích.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-secondary"><i class="bi bi-palette me-1 text-danger"></i>Màu sắc (Color Name)</label>
+                            <input asp-for="ColorName" class="form-control py-2 shadow-sm" placeholder="Ví dụ: 001 Pink, Đỏ cam, Tự nhiên..." />
+                            <small class="text-muted fst-italic">Để trống nếu sản phẩm không phân loại theo màu.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="ThumbnailUrl" class="form-label fw-semibold small text-secondary">Đường dẫn ảnh đại diện sản phẩm (URL)</label>
+                    <input asp-for="ThumbnailUrl" class="form-control py-2 shadow-sm" placeholder="https://example.com/image.jpg hoặc /images/products/..." />
+                    <span asp-validation-for="ThumbnailUrl" class="text-danger small mt-1 d-block"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label fw-semibold small text-secondary">Mô tả chi tiết công dụng</label>
+                    <textarea asp-for="Description" class="form-control shadow-sm" rows="4" placeholder="Nhập nội dung mô tả chi tiết công dụng sản phẩm tại đây..."></textarea>
+                    <span asp-validation-for="Description" class="text-danger small mt-1 d-block"></span>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="Ingredients" class="form-label fw-semibold small text-secondary"><i class="bi bi-flask me-1 text-success"></i>Thành phần đầy đủ (Ingredients)</label>
+                        <textarea asp-for="Ingredients" class="form-control shadow-sm" rows="5" placeholder="Ví dụ: Water, Glycerin, Niacinamide, Zinc PCA..."></textarea>
+                        <span asp-validation-for="Ingredients" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="HowToUse" class="form-label fw-semibold small text-secondary"><i class="bi bi-hand-index-thumb me-1 text-primary"></i>Hướng dẫn sử dụng (How to use)</label>
+                        <textarea asp-for="HowToUse" class="form-control shadow-sm" rows="5" placeholder="Ví dụ: Lấy lượng gel vừa đủ tạo bọt, thoa đều lên mặt sau đó rửa sạch..."></textarea>
+                        <span asp-validation-for="HowToUse" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="form-check form-switch p-0 ps-5 mt-2">
+                        <input class="form-check-input" type="checkbox" role="switch" asp-for="IsActive" checked />
+                        <label class="form-check-label fw-semibold text-dark ps-2" asp-for="IsActive">Kích hoạt sản phẩm trên hệ thống</label>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                    <a asp-action="Index" class="btn btn-outline-secondary px-4 rounded-3 fw-medium">Hủy bỏ</a>
+                    <button type="submit" class="btn btn-success px-5 rounded-3 fw-semibold shadow-sm">
+                        <i class="bi bi-check2-circle me-1"></i>Lưu sản phẩm
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

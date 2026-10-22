@@ -1,0 +1,134 @@
+﻿@model BeautyShop.ViewModels.RegisterViewModel
+
+@{
+    ViewData["Title"] = "Đăng ký tài khoản";
+}
+
+<div class="min-vh-100 d-flex align-items-center py-5" style="background:linear-gradient(135deg,#e6f5ef 0%,#f4f6f9 50%,#fef3c7 100%);">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-7 col-lg-6">
+
+                <!-- Logo -->
+                <div class="text-center mb-4">
+                    <a asp-controller="Home" asp-action="Index" class="text-decoration-none">
+                        <div style="font-size:2rem;font-weight:900;color:#006E4A;">
+                            <i class="bi bi-bag-heart-fill me-2"></i>Beauty<span style="color:#f39c11;">Shop</span>
+                        </div>
+                    </a>
+                    <p class="text-muted mt-1 fw-600" style="font-size:14px;">Tạo tài khoản miễn phí ngay hôm nay</p>
+                </div>
+
+                <!-- Card -->
+                <div style="background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,0.10);overflow:hidden;border:1.5px solid #edf2f7;">
+
+                    <!-- Header -->
+                    <div style="background:linear-gradient(135deg,#006E4A,#009665);padding:24px 32px;color:#fff;display:flex;align-items:center;gap:16px;">
+                        <div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">
+                            <i class="bi bi-person-plus-fill"></i>
+                        </div>
+                        <div>
+                            <h3 style="font-size:1.25rem;font-weight:900;margin:0;">Đăng ký tài khoản</h3>
+                            <p style="margin:4px 0 0;opacity:0.85;font-size:13px;">Trở thành thành viên của BeautyShop</p>
+                        </div>
+                    </div>
+
+                    <!-- Body -->
+                    <div style="padding:32px;">
+                        <form asp-action="Register" method="post" id="register-form">
+
+                            <div asp-validation-summary="ModelOnly" class="alert border-0 rounded-3 mb-3" style="background:#fff1f0;color:#c62828;font-size:14px;font-weight:600;"></div>
+
+                            <!-- Full Name -->
+                            <div class="mb-3">
+                                <label asp-for="FullName" class="form-label" style="font-size:13px;font-weight:700;color:#718096;">Họ và tên</label>
+                                <div class="input-group" style="border:2px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+                                    <span class="input-group-text" style="background:#f4f6f9;border:none;color:#a0aec0;padding:12px 16px;">
+                                        <i class="bi bi-person"></i>
+                                    </span>
+                                    <input asp-for="FullName" class="form-control" style="border:none;padding:12px 16px;font-size:15px;font-family:'Nunito',sans-serif;font-weight:600;" placeholder="Nguyễn Văn A" />
+                                </div>
+                                <span asp-validation-for="FullName" class="text-danger small mt-1 d-block fw-600"></span>
+                            </div>
+
+                            <!-- Email -->
+                            <div class="mb-3">
+                                <label asp-for="Email" class="form-label" style="font-size:13px;font-weight:700;color:#718096;">Email</label>
+                                <div class="input-group" style="border:2px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+                                    <span class="input-group-text" style="background:#f4f6f9;border:none;color:#a0aec0;padding:12px 16px;">
+                                        <i class="bi bi-envelope"></i>
+                                    </span>
+                                    <input asp-for="Email" class="form-control" style="border:none;padding:12px 16px;font-size:15px;font-family:'Nunito',sans-serif;font-weight:600;" placeholder="your@email.com" />
+                                </div>
+                                <span asp-validation-for="Email" class="text-danger small mt-1 d-block fw-600"></span>
+                            </div>
+
+                            <!-- Passwords -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label asp-for="Password" class="form-label" style="font-size:13px;font-weight:700;color:#718096;">Mật khẩu</label>
+                                    <div class="input-group" style="border:2px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+                                        <span class="input-group-text" style="background:#f4f6f9;border:none;color:#a0aec0;padding:12px 14px;">
+                                            <i class="bi bi-lock"></i>
+                                        </span>
+                                        <input asp-for="Password" type="password" class="form-control" style="border:none;padding:12px 14px;font-size:15px;font-family:'Nunito',sans-serif;font-weight:600;" placeholder="Tối thiểu 6 ký tự" id="reg-password" />
+                                        <button type="button" onclick="togglePwd('reg-password',this)" style="background:#f4f6f9;border:none;padding:12px 12px;color:#a0aec0;cursor:pointer;border-radius:0;"><i class="bi bi-eye"></i></button>
+                                    </div>
+                                    <span asp-validation-for="Password" class="text-danger small mt-1 d-block fw-600"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="ConfirmPassword" class="form-label" style="font-size:13px;font-weight:700;color:#718096;">Xác nhận mật khẩu</label>
+                                    <div class="input-group" style="border:2px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+                                        <span class="input-group-text" style="background:#f4f6f9;border:none;color:#a0aec0;padding:12px 14px;">
+                                            <i class="bi bi-shield-check"></i>
+                                        </span>
+                                        <input asp-for="ConfirmPassword" type="password" class="form-control" style="border:none;padding:12px 14px;font-size:15px;font-family:'Nunito',sans-serif;font-weight:600;" placeholder="Nhập lại mật khẩu" id="reg-confirm" />
+                                        <button type="button" onclick="togglePwd('reg-confirm',this)" style="background:#f4f6f9;border:none;padding:12px 12px;color:#a0aec0;cursor:pointer;"><i class="bi bi-eye"></i></button>
+                                    </div>
+                                    <span asp-validation-for="ConfirmPassword" class="text-danger small mt-1 d-block fw-600"></span>
+                                </div>
+                            </div>
+
+                            <!-- Terms -->
+                            <div class="form-check mb-4">
+                                <input type="checkbox" class="form-check-input" id="agreeTerms" required style="border-color:#e2e8f0;" />
+                                <label class="form-check-label fw-600 text-muted" for="agreeTerms" style="font-size:13px;">
+                                    Tôi đồng ý với <a href="#" style="color:#006E4A;font-weight:700;">Điều khoản dịch vụ</a> và <a href="#" style="color:#006E4A;font-weight:700;">Chính sách bảo mật</a>
+                                </label>
+                            </div>
+
+                            <button type="submit" style="background:linear-gradient(135deg,#006E4A,#009665);color:#fff;border:none;border-radius:12px;padding:14px;font-size:1rem;font-weight:800;width:100%;cursor:pointer;transition:all 0.3s;letter-spacing:0.3px;" id="register-submit">
+                                <i class="bi bi-person-check-fill me-2"></i>Đăng ký ngay
+                            </button>
+
+                        </form>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="background:#f9fafb;padding:18px;text-align:center;border-top:1px solid #edf2f7;">
+                        <span class="text-muted fw-600" style="font-size:14px;">Đã có tài khoản?</span>
+                        <a asp-controller="Account" asp-action="Login" style="color:#f39c11;font-weight:800;text-decoration:none;margin-left:6px;font-size:14px;" id="register-go-login">Đăng nhập tại đây</a>
+                    </div>
+                </div>
+
+                <!-- Trust -->
+                <div class="text-center mt-4 d-flex justify-content-center gap-4" style="font-size:12px;color:#a0aec0;font-weight:600;">
+                    <span><i class="bi bi-shield-lock me-1 text-success"></i>Bảo mật SSL</span>
+                    <span><i class="bi bi-gift me-1 text-warning"></i>Voucher 50K ngay khi đăng ký</span>
+                    <span><i class="bi bi-star-fill me-1" style="color:#f59e0b;"></i>Tích điểm mỗi đơn</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function togglePwd(id, btn) {
+            var input = document.getElementById(id);
+            var icon = btn.querySelector('i');
+            if (input.type === 'password') { input.type = 'text'; icon.className = 'bi bi-eye-slash'; }
+            else { input.type = 'password'; icon.className = 'bi bi-eye'; }
+        }
+    </script>
+}

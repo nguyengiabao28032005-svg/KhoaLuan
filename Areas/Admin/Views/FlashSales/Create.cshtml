@@ -1,0 +1,105 @@
+﻿@model BeautyShop.Models.FlashSale
+
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Tạo chiến dịch Flash Sale";
+}
+
+@section Styles {
+    <style>
+        .page-header {
+            margin-bottom: 25px;
+        }
+
+        .page-title {
+            color: #1e293b;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .form-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: var(--shadow-sm);
+            padding: 30px;
+        }
+
+        .form-control:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.95rem;
+        }
+    </style>
+}
+
+<div class="page-header">
+    <h2 class="page-title"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>Tạo chiến dịch Flash Sale mới</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-10 col-lg-8">
+        <div class="form-card">
+
+            <form asp-action="Create" method="post">
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3 small fw-medium"></div>
+
+                <div class="mb-4">
+                    <label asp-for="Name" class="form-label">Tên chương trình <span class="text-danger">*</span></label>
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-megaphone"></i></span>
+                        <input asp-for="Name" class="form-control border-start-0 ps-0" placeholder="Ví dụ: Siêu Sale Giữa Tháng, Black Friday..." />
+                    </div>
+                    <span asp-validation-for="Name" class="text-danger small mt-1 d-block fw-medium"></span>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label asp-for="StartTime" class="form-label">Thời gian bắt đầu <span class="text-danger">*</span></label>
+                        <input asp-for="StartTime" type="datetime-local" class="form-control shadow-sm" />
+                        <span asp-validation-for="StartTime" class="text-danger small mt-1 d-block fw-medium"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="EndTime" class="form-label">Thời gian kết thúc <span class="text-danger">*</span></label>
+                        <input asp-for="EndTime" type="datetime-local" class="form-control shadow-sm" />
+                        <span asp-validation-for="EndTime" class="text-danger small mt-1 d-block fw-medium"></span>
+                    </div>
+                </div>
+
+                <div class="mb-4 p-3 bg-light rounded-3 border">
+                    <div class="form-check form-switch fs-5 mb-0">
+                        <input asp-for="IsActive" class="form-check-input" role="switch" id="activeSwitch" checked>
+                        <label class="form-check-label fs-6 fw-bold text-dark ms-2 mt-1 cursor-pointer" for="activeSwitch">
+                            Kích hoạt chiến dịch ngay
+                        </label>
+                    </div>
+                    <small class="text-muted ms-5 d-block mt-1">Nếu tắt, chiến dịch sẽ ở trạng thái nháp và không hiển thị trên trang chủ.</small>
+                </div>
+
+                <hr class="text-muted mb-4" />
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4 fw-medium rounded-pill shadow-sm">
+                        <i class="bi bi-floppy me-1"></i> Lưu chiến dịch
+                    </button>
+
+                    <a asp-action="Index" class="btn btn-light px-4 fw-medium rounded-pill border">
+                        Hủy bỏ
+                    </a>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

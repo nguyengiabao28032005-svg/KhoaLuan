@@ -1,0 +1,388 @@
+@{
+    ViewData["Title"] = "Tạo phiếu chuyển kho";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var stores = ViewBag.Stores as List<BeautyShop.Models.Store> ?? new();
+    string? batchCode = ViewBag.BatchCode as string;
+    int? originStoreId = ViewBag.OriginStoreId as int?;
+    int? targetStoreId = ViewBag.TargetStoreId as int?;
+    var presetItems = ViewBag.PresetItems as List<BeautyShop.Models.StockTransferLine>;
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">
+            <i class="bi bi-truck text-primary me-2"></i>@(string.IsNullOrEmpty(batchCode) ? "Tạo phiếu chuyển kho mới" : $"Tiếp tục luân chuyển Lô {batchCode}")
+        </h2>
+        <p class="text-muted mb-0">Hệ thống tự động kiểm tra tuyến đường hợp lệ và chỉ định chặng trung chuyển Hub</p>
+    </div>
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary fw-bold px-3 py-2 rounded-3 shadow-sm bg-white">
+        <i class="bi bi-arrow-left me-1"></i> Quay lại danh sách
+    </a>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>@TempData["ErrorMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<form method="post" asp-action="Create" id="transferForm">
+    @if (!string.IsNullOrEmpty(batchCode))
+    {
+        <input type="hidden" name="batchCode" value="@batchCode" />
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background:#eff6ff;border-left:5px solid #2563eb !important;">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-info-circle-fill text-primary fs-4"></i>
+                <div>
+                    <span class="fw-bold text-dark">Đang tạo chặng tiếp theo cho Lô hàng:</span>
+                    <strong class="text-primary font-monospace ms-1">@batchCode</strong>
+                    <div class="small text-muted">Lô hàng đã hoàn thành chặng trước và đang lưu tại Hub. Hệ thống sẽ tiếp tục chuyển đến kho đích cuối cùng.</div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- CỘT TRÁI: ĐỊNH TUYẾN KHO GỬI & KHO NHẬN -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                <h5 class="fw-800 mb-3 text-dark border-bottom pb-2">
+                    <i class="bi bi-geo-alt-fill text-danger me-1"></i> 1. Thiết lập lộ trình vận chuyển
+                </h5>
+
+                <!-- 1.1 KHO GỬI -->
+                <div class="mb-3">
+                    <label class="form-label fw-700 small text-secondary">Kho gửi hàng <span class="text-danger">*</span></label>
+                    <select name="fromStoreId" id="selectFromStore" class="form-select py-2 shadow-sm" required onchange="onFromStoreChange()" @(!string.IsNullOrEmpty(batchCode) ? "readonly" : "")>
+                        <option value="">-- Chọn kho xuất phát --</option>
+                        @foreach (var s in stores)
+                        {
+                            <option value="@s.Id" selected="@(originStoreId == s.Id)">
+                                [@(s.Region ?? "Toàn quốc")] @s.Name — @s.ProvinceName
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <!-- 1.2 KHO ĐÍCH CUỐI CÙNG -->
+                <div class="mb-3">
+                    <label class="form-label fw-700 small text-secondary">Kho đích đến cuối cùng <span class="text-danger">*</span></label>
+                    <select name="finalDestinationStoreId" id="selectFinalDest" class="form-select py-2 shadow-sm" required onchange="onFinalDestChange()">
+                        <option value="">-- Chọn kho nhận hàng cuối cùng --</option>
+                        @foreach (var s in stores)
+                        {
+                            <option value="@s.Id" selected="@(targetStoreId == s.Id)">
+                                [@(s.Region ?? "Toàn quốc")] @s.Name — @s.ProvinceName
+                            </option>
+                        }
+                    </select>
+                    <div id="routeInfoBox" class="mt-2 p-3 rounded-3 small d-none" style="background:#f8fafc; border:1px dashed #cbd5e1;"></div>
+                </div>
+
+                <!-- 1.3 KHO NHẬN CỦA CHẶNG HIỆN TẠI (TỰ ĐỘNG CHỈ ĐỊNH) -->
+                <div class="mb-3">
+                    <label class="form-label fw-700 small text-secondary">
+                        Kho tiếp nhận chặng này <span class="text-danger">*</span>
+                    </label>
+                    <select name="toStoreId" id="selectToStore" class="form-select py-2 shadow-sm bg-light" required>
+                        <option value="">-- Tự động xác định theo tuyến --</option>
+                        @foreach (var s in stores)
+                        {
+                            <option value="@s.Id">[@(s.Region ?? "Toàn quốc")] @s.Name — @s.ProvinceName</option>
+                        }
+                    </select>
+                    <small class="text-muted d-block mt-1 fst-italic">Hệ thống tự động chọn Hub Đà Nẵng nếu tuyến liên miền bắt buộc qua trạm gom hàng.</small>
+                </div>
+
+                <!-- GHI CHÚ -->
+                <div class="mb-2">
+                    <label class="form-label fw-700 small text-secondary">Ghi chú vận chuyển</label>
+                    <textarea name="note" class="form-control shadow-sm" rows="2" placeholder="Ghi chú người vận chuyển, biển số xe, nhiệt độ bảo quản..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- CỘT PHẢI: CHỌN SẢN PHẨM & SỐ LƯỢNG CHUYỂN -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
+                    <h5 class="fw-800 mb-0 text-dark">
+                        <i class="bi bi-box-seam-fill text-primary me-1"></i> 2. Mặt hàng luân chuyển
+                    </h5>
+                    <button type="button" id="btnAddRow" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3" onclick="addRow()">
+                        <i class="bi bi-plus-circle me-1"></i> Thêm sản phẩm
+                    </button>
+                </div>
+
+                <div id="stockAlert" class="alert alert-info py-2 small mb-3">
+                    <i class="bi bi-info-circle me-1"></i> Vui lòng chọn <strong>Kho gửi hàng</strong> để hệ thống tải danh sách tồn kho khả dụng.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle" id="itemsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="small fw-bold">Sản phẩm & Biến thể</th>
+                                <th class="small fw-bold text-center" style="width:130px;">Tồn khả dụng</th>
+                                <th class="small fw-bold text-center" style="width:130px;">SL Chuyển</th>
+                                <th class="small fw-bold text-center" style="width:60px;">Xóa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTableBody">
+                            <!-- Dòng hàng sẽ được thêm động bằng JS hoặc preset -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                    <a asp-action="Index" class="btn btn-light fw-bold px-4 py-2 rounded-3">Hủy bỏ</a>
+                    <button type="submit" id="btnSubmitTransfer" class="btn btn-primary fw-bold px-4 py-2 rounded-3 shadow-sm">
+                        <i class="bi bi-check-circle-fill me-1"></i> Tạo phiếu chuyển kho
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    let availableVariants = [];
+    let currentDestinations = [];
+    let currentStoreRequestId = 0;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const fromSelect = document.getElementById('selectFromStore');
+        if (fromSelect.value) {
+            onFromStoreChange();
+        }
+    });
+
+    async function onFromStoreChange() {
+        const fromStoreId = document.getElementById('selectFromStore').value;
+        const finalSelect = document.getElementById('selectFinalDest');
+        const routeInfoBox = document.getElementById('routeInfoBox');
+        const stockAlert = document.getElementById('stockAlert');
+        const toStoreSelect = document.getElementById('selectToStore');
+        const tbody = document.getElementById('itemsTableBody');
+        const addBtn = document.getElementById('btnAddRow');
+        const submitBtn = document.getElementById('btnSubmitTransfer');
+
+        const requestId = ++currentStoreRequestId;
+
+        // Luôn xóa bảng hàng của kho cũ khi thay đổi kho gửi
+        tbody.innerHTML = '';
+
+        if (!fromStoreId) {
+            finalSelect.innerHTML = '<option value="">-- Chọn kho nhận hàng cuối cùng --</option>';
+            toStoreSelect.innerHTML = '<option value="">-- Tự động xác định theo tuyến --</option>';
+            routeInfoBox.classList.add('d-none');
+            stockAlert.className = 'alert alert-info py-2 small mb-3';
+            stockAlert.innerHTML = '<i class="bi bi-info-circle me-1"></i> Vui lòng chọn <strong>Kho gửi hàng</strong> để tải tồn kho.';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">Vui lòng chọn kho xuất phát để tải danh sách hàng.</td></tr>';
+            if (addBtn) addBtn.disabled = true;
+            if (submitBtn) submitBtn.disabled = true;
+            return;
+        }
+
+        stockAlert.className = 'alert alert-info py-2 small mb-3';
+        stockAlert.innerHTML = '<div class="spinner-border spinner-border-sm text-primary me-2"></div> Đang kiểm tra tuyến và tồn kho khả dụng...';
+        if (addBtn) addBtn.disabled = true;
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            // Tải đồng thời cả tuyến hợp lệ và tồn kho khả dụng (chống cache bằng _t)
+            const [resRoutes, resStock] = await Promise.all([
+                fetch(`/Admin/Transfers/GetDestinations?fromStoreId=${fromStoreId}&_t=${Date.now()}`),
+                fetch(`/Admin/Transfers/GetStoreStock?storeId=${fromStoreId}&_t=${Date.now()}`)
+            ]);
+
+            // Nếu người dùng đã click chọn kho khác trong khi request đang bay, bỏ qua response cũ
+            if (requestId !== currentStoreRequestId) return;
+
+            currentDestinations = await resRoutes.json();
+            availableVariants = await resStock.json();
+
+            // Cập nhật dropdown kho đích
+            const savedFinalVal = finalSelect.value;
+            finalSelect.innerHTML = '<option value="">-- Chọn kho nhận hàng cuối cùng --</option>';
+
+            currentDestinations.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.storeId;
+                opt.textContent = `[${d.region || 'Toàn quốc'}] ${d.storeName} — ${d.provinceName || ''}`;
+                if (d.transitStoreId) {
+                    opt.textContent += ` (Qua Hub ${d.transitStoreName})`;
+                } else {
+                    opt.textContent += ' (Trực tiếp)';
+                }
+                finalSelect.appendChild(opt);
+            });
+
+            if (savedFinalVal && currentDestinations.some(d => d.storeId == savedFinalVal)) {
+                finalSelect.value = savedFinalVal;
+            }
+
+            onFinalDestChange();
+
+            // Cập nhật bảng tồn kho
+            if (Array.isArray(availableVariants) && availableVariants.length > 0) {
+                stockAlert.className = 'alert alert-success py-2 small mb-3';
+                stockAlert.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> Kho gửi có <strong>${availableVariants.length}</strong> mặt hàng có sẵn tồn kho khả dụng để chuyển.`;
+                if (addBtn) addBtn.disabled = false;
+                if (submitBtn) submitBtn.disabled = false;
+                addRow();
+            } else {
+                stockAlert.className = 'alert alert-warning py-2 small mb-3';
+                stockAlert.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> Kho này hiện không có sản phẩm nào có sẵn tồn kho khả dụng để chuyển!';
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted"><i class="bi bi-inbox fs-3 d-block mb-1 text-secondary"></i>Kho này hiện không có sản phẩm nào có tồn kho để luân chuyển.<br/><small class="text-muted">Vui lòng chọn kho gửi khác hoặc tạo phiếu nhập hàng trước.</small></td></tr>`;
+                if (addBtn) addBtn.disabled = true;
+                if (submitBtn) submitBtn.disabled = true;
+            }
+        } catch (e) {
+            if (requestId !== currentStoreRequestId) return;
+            console.error('Lỗi tải dữ liệu kho:', e);
+            stockAlert.className = 'alert alert-danger py-2 small mb-3';
+            stockAlert.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> Lỗi khi tải dữ liệu từ máy chủ. Vui lòng thử lại.';
+        }
+    }
+
+    function onFinalDestChange() {
+        const fromStoreId = document.getElementById('selectFromStore').value;
+        const finalDestId = document.getElementById('selectFinalDest').value;
+        const routeInfoBox = document.getElementById('routeInfoBox');
+        const toStoreSelect = document.getElementById('selectToStore');
+        const submitBtn = document.getElementById('btnSubmitTransfer');
+
+        if (!fromStoreId || !finalDestId) {
+            routeInfoBox.classList.add('d-none');
+            return;
+        }
+
+        const matchedRoute = currentDestinations.find(d => d.storeId == finalDestId);
+
+        if (!matchedRoute) {
+            routeInfoBox.className = 'mt-2 p-3 rounded-3 small bg-danger-subtle text-danger';
+            routeInfoBox.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> <strong>Không có tuyến:</strong> Hiện chưa có tuyến vận chuyển hợp lệ giữa 2 kho này!';
+            routeInfoBox.classList.remove('d-none');
+            submitBtn.disabled = true;
+            return;
+        }
+
+        submitBtn.disabled = false;
+        routeInfoBox.classList.remove('d-none');
+
+        if (matchedRoute.transitStoreId) {
+            // Tuyến qua Hub
+            routeInfoBox.className = 'mt-2 p-3 rounded-3 small bg-warning-subtle text-dark border border-warning-subtle';
+            routeInfoBox.innerHTML = `
+                <div class="fw-bold text-dark"><i class="bi bi-diagram-3-fill text-warning me-1"></i> Tuyến gom hàng liên miền (bắt buộc qua Hub):</div>
+                <div class="mt-1">Hành trình: <strong>${document.getElementById('selectFromStore').selectedOptions[0].text}</strong> ➔ <span class="badge bg-warning text-dark">Hub ${matchedRoute.transitStoreName}</span> ➔ <strong>${matchedRoute.storeName}</strong></div>
+                <div class="mt-1 text-muted">Chặng 1 bắt buộc chuyển đến Hub trung chuyển để gom tải tối ưu chi phí vận hành.</div>
+            `;
+            // Tự động gán kho nhận chặng này là Hub
+            toStoreSelect.value = matchedRoute.transitStoreId;
+        } else {
+            // Tuyến trực tiếp
+            routeInfoBox.className = 'mt-2 p-3 rounded-3 small bg-success-subtle text-dark border border-success-subtle';
+            routeInfoBox.innerHTML = `
+                <div class="fw-bold text-success"><i class="bi bi-check-circle-fill me-1"></i> Tuyến vận chuyển trực tiếp:</div>
+                <div class="mt-1">${matchedRoute.routeDescription || 'Vận chuyển thẳng không qua trạm trung chuyển.'} (Ước tính: ${matchedRoute.distanceKm || '—'} km, ${matchedRoute.estimatedHours || '—'} giờ)</div>
+            `;
+            toStoreSelect.value = matchedRoute.storeId;
+        }
+    }
+
+    function addRow() {
+        const tbody = document.getElementById('itemsTableBody');
+        const tr = document.createElement('tr');
+
+        let selectOptions = '<option value="">-- Chọn sản phẩm --</option>';
+        availableVariants.forEach(v => {
+            const detail = (v.color ? ` - ${v.color}` : '') + (v.volume ? ` (${v.volume})` : '');
+            selectOptions += `<option value="${v.variantId}" data-stock="${v.availableStock}">${v.productName} [${v.sku}]${detail} (Còn: ${v.availableStock})</option>`;
+        });
+
+        tr.innerHTML = `
+            <td>
+                <select name="variantIds" class="form-select py-1 variant-selector" required onchange="onVariantChange(this)">
+                    ${selectOptions}
+                </select>
+            </td>
+            <td class="text-center fw-bold text-success variant-stock-display">—</td>
+            <td>
+                <input type="number" name="quantities" class="form-control py-1 text-center fw-bold text-primary variant-qty-input" min="1" value="1" required oninput="validateQty(this)" />
+                <div class="text-danger small qty-error-msg d-none">Vượt tồn!</div>
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeRow(this)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) {
+        const tr = btn.closest('tr');
+        const tbody = document.getElementById('itemsTableBody');
+        if (tbody.children.length > 1) {
+            tr.remove();
+        } else {
+            alert('Cần có ít nhất một sản phẩm cần chuyển!');
+        }
+    }
+
+    function onVariantChange(select) {
+        const tr = select.closest('tr');
+        const stockDisplay = tr.querySelector('.variant-stock-display');
+        const qtyInput = tr.querySelector('.variant-qty-input');
+        const selectedOpt = select.selectedOptions[0];
+
+        if (selectedOpt && selectedOpt.value) {
+            const stock = parseInt(selectedOpt.getAttribute('data-stock') || '0');
+            stockDisplay.textContent = stock;
+            qtyInput.max = stock;
+            validateQty(qtyInput);
+        } else {
+            stockDisplay.textContent = '—';
+        }
+    }
+
+    function validateQty(input) {
+        const tr = input.closest('tr');
+        const stockDisplay = tr.querySelector('.variant-stock-display');
+        const errorMsg = tr.querySelector('.qty-error-msg');
+        const maxStock = parseInt(stockDisplay.textContent || '0');
+        const currentQty = parseInt(input.value || '0');
+
+        if (maxStock > 0 && currentQty > maxStock) {
+            errorMsg.classList.remove('d-none');
+            input.classList.add('is-invalid');
+            document.getElementById('btnSubmitTransfer').disabled = true;
+        } else {
+            errorMsg.classList.add('d-none');
+            input.classList.remove('is-invalid');
+            document.getElementById('btnSubmitTransfer').disabled = false;
+        }
+    }
+
+    function updateAllDropdowns() {
+        document.querySelectorAll('.variant-selector').forEach(sel => {
+            const currentVal = sel.value;
+            let selectOptions = '<option value="">-- Chọn sản phẩm --</option>';
+            availableVariants.forEach(v => {
+                const detail = (v.color ? ` - ${v.color}` : '') + (v.volume ? ` (${v.volume})` : '');
+                selectOptions += `<option value="${v.variantId}" data-stock="${v.availableStock}">${v.productName} [${v.sku}]${detail} (Còn: ${v.availableStock})</option>`;
+            });
+            sel.innerHTML = selectOptions;
+            if (currentVal) sel.value = currentVal;
+            onVariantChange(sel);
+        });
+    }
+</script>
+}

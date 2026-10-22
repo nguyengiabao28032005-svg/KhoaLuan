@@ -1,0 +1,176 @@
+﻿@{
+    ViewData["Title"] = "Đánh giá sản phẩm";
+}
+
+@section Styles {
+    <style>
+        .review-card {
+            background: var(--bg-white);
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--shadow-sm);
+            padding: 30px;
+        }
+
+        .product-title-badge {
+            background-color: #f0fdf4;
+            color: var(--hasaki-green);
+            padding: 8px 16px;
+            border-radius: 50rem;
+            font-weight: 600;
+            display: inline-block;
+            border: 1px solid #bbf7d0;
+            margin-bottom: 25px;
+        }
+
+        .star-rating-select {
+            display: flex;
+            gap: 8px;
+            font-size: 2rem;
+            color: #e2e8f0;
+            cursor: pointer;
+        }
+
+        .star-rating-select i.active,
+        .star-rating-select i.hover {
+            color: #fbbf24; /* Vàng hổ phách */
+        }
+
+        .btn-submit-review {
+            background-color: var(--hasaki-green);
+            color: #ffffff;
+            transition: var(--transition);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 14px 0;
+            border-radius: 50rem;
+            margin-top: 10px;
+        }
+
+        .btn-submit-review:hover {
+            background-color: var(--hasaki-green-light);
+            color: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 110, 74, 0.2);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 1.05rem;
+            margin-bottom: 10px;
+        }
+    </style>
+}
+
+<div class="container py-5 min-vh-100">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="text-center mb-4">
+                <h2 class="fw-bold text-dark mb-2">Gửi nhận xét của bạn</h2>
+                <p class="text-muted mb-0">Hãy chia sẻ cảm nhận về sản phẩm để giúp chúng tôi phục vụ bạn tốt hơn nhé!</p>
+            </div>
+
+            <div class="review-card shadow-sm">
+
+                <div class="product-title-badge">
+                    <i class="bi bi-basket3-fill me-1"></i> @ViewBag.Product.Name
+                </div>
+
+                <form method="post"
+                      asp-controller="Review"
+                      asp-action="Create"
+                      id="reviewForm">
+
+                    <input type="hidden" name="productId" value="@ViewBag.Product.Id" />
+
+                    <div class="mb-4">
+                        <label class="form-label d-block mb-3">Đánh giá chất lượng sản phẩm <span class="text-danger">*</span></label>
+
+                        <div class="star-rating-select" id="starContainer">
+                            <i class="bi bi-star-fill" data-value="1"></i>
+                            <i class="bi bi-star-fill" data-value="2"></i>
+                            <i class="bi bi-star-fill" data-value="3"></i>
+                            <i class="bi bi-star-fill" data-value="4"></i>
+                            <i class="bi bi-star-fill" data-value="5"></i>
+                        </div>
+
+                        <input type="hidden" name="rating" id="ratingInput" value="5" required />
+                        <small class="text-muted d-block mt-2 fst-italic">Nhấp chọn số sao tương ứng (1 đến 5 sao)</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label" for="commentTextarea">Nhận xét chi tiết của bạn</label>
+                        <textarea name="comment"
+                                  id="commentTextarea"
+                                  rows="5"
+                                  class="form-control shadow-sm"
+                                  placeholder="Sản phẩm này dùng có thích không? Chất lượng dịch vụ như thế nào?..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-submit-review w-100 shadow-sm">
+                        <i class="bi bi-send-check me-2"></i> Gửi đánh giá
+                    </button>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const stars = document.querySelectorAll("#starContainer i");
+            const ratingInput = document.getElementById("ratingInput");
+
+            // Hàm cập nhật màu sắc hiển thị của ngôi sao
+            function updateStars(val) {
+                stars.forEach(star => {
+                    const starValue = parseInt(star.getAttribute("data-value"));
+                    if (starValue <= val) {
+                        star.classList.add("active");
+                    } else {
+                        star.classList.remove("active");
+                    }
+                    star.classList.remove("hover");
+                });
+            }
+
+            // Thiết lập mặc định 5 sao khi tải trang
+            let currentRating = 5;
+            updateStars(currentRating);
+
+            // Xử lý sự kiện click để chọn mốc đánh giá
+            stars.forEach(star => {
+                star.addEventListener("click", function () {
+                    currentRating = parseInt(this.getAttribute("data-value"));
+                    ratingInput.value = currentRating;
+                    updateStars(currentRating);
+                });
+
+                // Hiệu ứng hover khi di chuột qua các ngôi sao
+                star.addEventListener("mouseenter", function () {
+                    const hoverValue = parseInt(this.getAttribute("data-value"));
+                    stars.forEach(s => {
+                        const sValue = parseInt(s.getAttribute("data-value"));
+                        if (sValue <= hoverValue) {
+                            s.classList.add("hover");
+                        } else {
+                            s.classList.remove("hover");
+                        }
+                    });
+                });
+            });
+
+            // Reset hiệu ứng hover khi chuột rời khỏi vùng chọn sao
+            document.getElementById("starContainer").addEventListener("mouseleave", function () {
+                stars.forEach(star => star.classList.remove("hover"));
+                updateStars(currentRating); // Trở lại trạng thái số sao đã click chọn
+            });
+        });
+    </script>
+}

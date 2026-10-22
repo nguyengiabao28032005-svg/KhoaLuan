@@ -1,0 +1,117 @@
+﻿@model BeautyShop.Models.Review
+
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Chi tiết đánh giá";
+}
+
+@section Styles {
+    <style>
+        .page-title {
+            color: #1e293b;
+            font-weight: 700;
+        }
+
+        .detail-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .detail-card-header {
+            padding: 24px 30px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+            .detail-card-header h3 {
+                color: #0f172a;
+                font-weight: 700;
+                margin: 0;
+                font-size: 1.4rem;
+            }
+
+        .info-group p {
+            margin-bottom: 16px;
+            font-size: 1rem;
+            color: #334155;
+        }
+
+        .info-group strong {
+            color: #475569;
+            display: inline-block;
+            width: 130px;
+        }
+
+        .star-rating {
+            color: #fbbf24; /* Vàng hổ phách */
+            font-size: 1.2rem;
+        }
+
+        .comment-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 25px;
+            line-height: 1.7;
+            color: #334155;
+        }
+    </style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="page-title mb-0">
+        <i class="bi bi-star-half me-2 text-primary"></i>Quản trị đánh giá
+    </h2>
+    <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 fw-medium">
+        <i class="bi bi-arrow-left me-1"></i> Quay lại danh sách
+    </a>
+</div>
+
+<div class="detail-card shadow-sm mb-4">
+
+    <div class="detail-card-header">
+        <h3><i class="bi bi-chat-right-text me-2 text-muted"></i>Nội dung đánh giá sản phẩm</h3>
+    </div>
+
+    <div class="card-body p-4 p-md-5 info-group">
+
+        <p><strong>Khách hàng:</strong> <span class="fw-bold text-dark fs-6">@(Model.User?.FullName ?? "Người dùng ẩn danh")</span></p>
+
+        <p><strong>Sản phẩm:</strong> <span class="fw-medium text-primary">@(Model.Product?.Name ?? "Sản phẩm không tồn tại")</span></p>
+
+        <p>
+            <strong>Đánh giá:</strong>
+            <span class="star-rating ms-1">
+                @for (int i = 0; i < (Model.Rating > 5 ? 5 : Model.Rating); i++)
+                {
+                    <i class="bi bi-star-fill"></i>
+                }
+                @for (int i = (int)Model.Rating; i < 5; i++)
+                {
+                    <i class="bi bi-star"></i>
+                }
+            </span>
+            <span class="fw-bold text-dark ms-2">(@Model.Rating / 5 sao)</span>
+        </p>
+
+        <hr class="text-muted my-4" />
+
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-card-text me-2 text-secondary"></i>Nhận xét chi tiết</h5>
+
+        <div class="comment-box shadow-sm border">
+            @(string.IsNullOrEmpty(Model.Comment) ? "Khách hàng không để lại nhận xét văn bản." : Model.Comment)
+        </div>
+
+        <div class="pt-2 border-top">
+            <a asp-action="Index" class="btn btn-light px-4 fw-medium rounded-pill border">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại
+            </a>
+        </div>
+
+    </div>
+
+</div>

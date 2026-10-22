@@ -1,0 +1,130 @@
+/* ========================================================
+   BEAUTYSHOP 3D DESIGN SYSTEM - STAFF CSS
+   3D tối giản, tập trung vào tốc độ xử lý & trực quan thao tác
+   ======================================================== */
+
+/* 1. STATUS BADGES CÓ CHIỀU SÂU VÀ MÀU PHÂN BIỆT RÕ */
+.bdg, .badge-status {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 13px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bdg:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Đơn chờ duyệt - Màu vàng hổ phách nổi */
+.bdg-orange, .badge-warning {
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%) !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
+}
+
+/* Đơn hoàn thành - Màu xanh lá sắc nét */
+.bdg-green, .badge-success {
+    background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%) !important;
+    color: #15803d !important;
+    border-color: #bbf7d0 !important;
+}
+
+/* Đơn đang giao - Màu xanh dương */
+.bdg-blue, .badge-primary {
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%) !important;
+    color: #1d4ed8 !important;
+    border-color: #bfdbfe !important;
+}
+
+/* Cảnh báo hết hàng / Hủy đơn - Màu đỏ nổi */
+.bdg-red, .badge-danger {
+    background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%) !important;
+    color: #be123c !important;
+    border-color: #fecdd3 !important;
+}
+
+/* 2. NÚT THAO TÁC CHÍNH CÓ ĐỘ NỔI VẬT LÝ VÀ LÚN XUỐNG KHI BẤM */
+.btn-ap, .btn-as, .btn-ae, .btn-ad, .btn-aw {
+    position: relative;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15), 0 3px 8px rgba(0, 0, 0, 0.08) !important;
+    transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+
+.btn-ap:hover, .btn-as:hover, .btn-ae:hover, .btn-ad:hover, .btn-aw:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.18), 0 5px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.btn-ap:active, .btn-as:active, .btn-ae:active, .btn-ad:active, .btn-aw:active {
+    transform: translateY(2px) !important;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 3. KHỐI 3D ISOMETRIC MINH HỌA KIỆN HÀNG TRÊN DASHBOARD NHÂN VIÊN */
+.staff-3d-parcel-widget {
+    background: linear-gradient(135deg, #006E4A 0%, #009665 100%);
+    border-radius: 18px;
+    padding: 22px 26px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--depth-2);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.staff-3d-parcel-cube {
+    width: 60px;
+    height: 60px;
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateX(-20deg) rotateY(35deg);
+    flex-shrink: 0;
+}
+
+.cube-face {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: #d97706;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.15);
+}
+
+.cube-top {
+    transform: rotateX(90deg) translateZ(30px);
+    background: #f59e0b;
+}
+
+.cube-front {
+    transform: translateZ(30px);
+    background: #b45309;
+}
+
+.cube-right {
+    transform: rotateY(90deg) translateZ(30px);
+    background: #92400e;
+}
+
+/* Băng dính kiện hàng */
+.cube-front::after, .cube-top::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 24px;
+    width: 12px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.35);
+}
+
+/* Tuyệt đối không dùng animation chạy lặp lại liên tục ở trang nhân viên */

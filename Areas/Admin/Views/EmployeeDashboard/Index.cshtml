@@ -1,0 +1,191 @@
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Bảng điều khiển Nhân viên";
+    
+    var lowStockItems = ViewBag.LowStockItems as List<BeautyShop.Models.Inventory>;
+    var latestPendingOrders = ViewBag.LatestPendingOrders as List<BeautyShop.Models.Order>;
+}
+
+<div class="page-hdr mb-4">
+    <h2>Xin chào, @ViewBag.EmployeeName!</h2>
+    <span class="ph-sub text-muted">Dưới đây là tổng quan công việc hôm nay</span>
+</div>
+
+<!-- 3D Warehouse Parcel Widget -->
+<partial name="~/Views/Shared/Partials/3d/_WarehouseParcel3D.cshtml" />
+
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <a href="@Url.Action("Index", "Orders")" class="text-decoration-none">
+            <div class="stat-card border-start border-4 border-warning h-100 p-3 shadow-sm bg-white rounded d-flex align-items-center">
+                <div class="stat-icon text-warning bg-warning bg-opacity-10 rounded p-3 me-3">
+                    <i class="bi bi-clock-history fs-3"></i>
+                </div>
+                <div class="stat-info">
+                    <h6 class="text-muted mb-1">Đơn chờ duyệt</h6>
+                    <h3 class="mb-0 fw-bold">@ViewBag.PendingOrders</h3>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card border-start border-4 border-primary h-100 p-3 shadow-sm bg-white rounded d-flex align-items-center">
+            <div class="stat-icon text-primary bg-primary bg-opacity-10 rounded p-3 me-3">
+                <i class="bi bi-bag-check fs-3"></i>
+            </div>
+            <div class="stat-info">
+                <h6 class="text-muted mb-1">Đơn hôm nay</h6>
+                <h3 class="mb-0 fw-bold">@ViewBag.TodayOrders</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card border-start border-4 border-success h-100 p-3 shadow-sm bg-white rounded d-flex align-items-center">
+            <div class="stat-icon text-success bg-success bg-opacity-10 rounded p-3 me-3">
+                <i class="bi bi-check-circle fs-3"></i>
+            </div>
+            <div class="stat-info">
+                <h6 class="text-muted mb-1">Hoàn thành hôm nay</h6>
+                <h3 class="mb-0 fw-bold">@ViewBag.CompletedToday</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <a href="@Url.Action("Index", "Inventory")" class="text-decoration-none">
+            <div class="stat-card border-start border-4 border-danger h-100 p-3 shadow-sm bg-white rounded d-flex align-items-center">
+                <div class="stat-icon text-danger bg-danger bg-opacity-10 rounded p-3 me-3">
+                    <i class="bi bi-exclamation-triangle fs-3"></i>
+                </div>
+                <div class="stat-info">
+                    <h6 class="text-muted mb-1">Sắp hết hàng</h6>
+                    <h3 class="mb-0 fw-bold">@ViewBag.LowStockCount</h3>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-7 mb-4">
+        <div class="admin-card h-100">
+            <div class="admin-card-header">
+                <h5 class="mb-0">Đơn Hàng Chờ Xử Lý</h5>
+            </div>
+            <div class="admin-card-body p-0">
+                @if (latestPendingOrders != null && latestPendingOrders.Count > 0)
+                {
+                    <div class="table-responsive">
+                        <table class="admin-table table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Mã đơn</th>
+                                    <th>Khách hàng</th>
+                                    <th>Tổng tiền</th>
+                                    <th>Thời gian</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var order in latestPendingOrders)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a href="@Url.Action("Details", "Orders", new { id = order.Id })" class="text-decoration-none fw-bold">@order.OrderCode</a>
+                                        </td>
+                                        <td>
+                                            <div>@order.CustomerName</div>
+                                            <small class="text-muted">@order.PhoneNumber</small>
+                                        </td>
+                                        <td>@order.FinalAmount.ToString("N0")đ</td>
+                                        <td>@order.CreatedAt.ToString("HH:mm dd/MM")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-emoji-smile fs-1 d-block mb-3 text-success"></i>
+                        <p class="mb-0 fs-5">Không có đơn chờ xử lý 🎉</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-5 mb-4">
+        <div class="admin-card mb-4">
+            <div class="admin-card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Sản Phẩm Sắp Hết Hàng</h5>
+                <a href="@Url.Action("Index", "Inventory")" class="btn btn-as sm">Xem kho</a>
+            </div>
+            <div class="admin-card-body p-0">
+                @if (lowStockItems != null && lowStockItems.Count > 0)
+                {
+                    <div class="table-responsive">
+                        <table class="admin-table table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Sản phẩm</th>
+                                    <th>SKU</th>
+                                    <th class="text-center">Tồn kho</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in lowStockItems)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="text-truncate" style="max-width: 150px;" title="@item.Variant?.Product?.Name">
+                                                @item.Variant?.Product?.Name
+                                            </div>
+                                        </td>
+                                        <td><small class="text-muted">@item.Variant?.SKU</small></td>
+                                        <td class="text-center">
+                                            @if (item.StockQuantity <= 5)
+                                            {
+                                                <span class="bdg-orange">@item.StockQuantity</span>
+                                            }
+                                            else
+                                            {
+                                                <span>@item.StockQuantity</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="p-4 text-center text-muted">
+                        <p class="mb-0">Kho hàng ổn định.</p>
+                    </div>
+                }
+            </div>
+        </div>
+        
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="mb-0">Công Việc Khác</h5>
+            </div>
+            <div class="admin-card-body">
+                <div class="d-flex flex-column gap-2">
+                    <a href="@Url.Action("Index", "Reviews")" class="btn btn-outline-secondary d-flex justify-content-between align-items-center text-start">
+                        <span><i class="bi bi-star-half me-2"></i>Kiểm duyệt đánh giá</span>
+                        @if (ViewBag.PendingReviews != null && ViewBag.PendingReviews > 0)
+                        {
+                            <span class="badge bg-warning text-dark rounded-pill">@ViewBag.PendingReviews</span>
+                        }
+                    </a>
+                    <a href="@Url.Action("Index", "Inventory")" class="btn btn-outline-secondary d-flex justify-content-between align-items-center text-start">
+                        <span><i class="bi bi-box-seam me-2"></i>Quản lý kho hàng</span>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

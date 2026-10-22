@@ -1,0 +1,64 @@
+﻿@model BeautyShop.ViewModels.AdminUserViewModel
+
+@{
+    ViewData["Title"] = "Chỉnh sửa người dùng";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid px-4 py-4" style="max-width: 760px;">
+    <div class="mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a asp-action="Index" class="text-decoration-none">Người dùng</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Cập nhật</li>
+            </ol>
+        </nav>
+        <h3 class="fw-bold text-dark"><i class="bi bi-pencil-square me-2 text-warning"></i>Chỉnh sửa thông tin tài khoản</h3>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <form asp-action="Edit" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3 fw-bold"></div>
+                <input type="hidden" asp-for="Id" />
+
+                <div class="mb-3">
+                    <label asp-for="FullName" class="form-label fw-semibold small text-secondary">Họ và tên đầy đủ <span class="text-danger">*</span></label>
+                    <input asp-for="FullName" class="form-control py-2 shadow-sm" />
+                    <span asp-validation-for="FullName" class="text-danger small mt-1 d-block"></span>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label asp-for="Email" class="form-label fw-semibold small text-secondary">Địa chỉ Email <span class="text-danger">*</span></label>
+                        <input asp-for="Email" type="email" class="form-control py-2 shadow-sm" />
+                        <span asp-validation-for="Email" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="PhoneNumber" class="form-label fw-semibold small text-secondary">Số điện thoại</label>
+                        <input asp-for="PhoneNumber" class="form-control py-2 shadow-sm" />
+                        <span asp-validation-for="PhoneNumber" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="RoleId" class="form-label fw-semibold small text-secondary">Phân quyền vai trò <span class="text-danger">*</span></label>
+                    <select asp-for="RoleId" class="form-select py-2 shadow-sm" asp-items="@(new SelectList(ViewBag.Roles, "Id", "Name", Model.RoleId))"></select>
+                    <span asp-validation-for="RoleId" class="text-danger small mt-1 d-block"></span>
+                </div>
+
+                <div class="mb-4">
+                    <div class="form-check form-switch p-0 ps-5 mt-2">
+                        <input class="form-check-input" type="checkbox" role="switch" asp-for="IsActive" />
+                        <label class="form-check-label fw-semibold text-dark ps-2" asp-for="IsActive">Tài khoản hoạt động công khai (Bỏ tích để KHÓA tài khoản)</label>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                    <a asp-action="Index" class="btn btn-outline-secondary px-4 rounded-3 fw-medium">Quay lại</a>
+                    <button type="submit" class="btn btn-warning text-dark px-5 rounded-3 fw-semibold shadow-sm">Cập nhật dữ liệu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

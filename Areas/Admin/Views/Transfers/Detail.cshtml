@@ -1,0 +1,291 @@
+@model BeautyShop.Models.StockTransfer
+@{
+    ViewData["Title"] = $"Phiếu chuyển kho {Model.TransferCode}";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var batchJourney = ViewBag.BatchJourney as List<BeautyShop.Models.StockTransfer> ?? new();
+    int totalQty = Model.Lines?.Sum(l => l.Quantity) ?? 0;
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h2 class="fw-800 mb-0" style="color:#1a1a2e;">Phiếu chuyển: @Model.TransferCode</h2>
+            @if (Model.Status == "InTransit")
+            {
+                <span class="badge bg-warning-subtle text-warning px-3 py-2 rounded-pill fw-bold border border-warning-subtle">
+                    <i class="bi bi-truck me-1"></i> Đang vận chuyển
+                </span>
+            }
+            else if (Model.Status == "Received")
+            {
+                <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold border border-success-subtle">
+                    <i class="bi bi-check-circle-fill me-1"></i> Đã tiếp nhận
+                </span>
+            }
+            else
+            {
+                <span class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-pill fw-bold border">
+                    <i class="bi bi-x-circle me-1"></i> Đã hủy
+                </span>
+            }
+        </div>
+        <p class="text-muted mb-0">Mã lô vận chuyển: <strong class="text-primary font-monospace">@Model.BatchCode</strong> (Chặng @Model.LegIndex / Tổng @batchJourney.Count chặng)</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary fw-bold px-3 py-2 rounded-3 shadow-sm bg-white">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại
+        </a>
+        @if (Model.Status == "InTransit")
+        {
+            <button type="button" class="btn btn-sm btn-success fw-bold px-3 py-2 rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#receiveModal">
+                <i class="bi bi-box-seam me-1"></i> Xác nhận nhận hàng
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger fw-bold px-3 py-2 rounded-3 shadow-sm bg-white" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                <i class="bi bi-x-circle me-1"></i> Hủy phiếu chuyển
+            </button>
+        }
+        else if (Model.Status == "Received" && Model.ToStoreId != Model.FinalDestinationStoreId)
+        {
+            <a asp-action="Create" asp-route-batchCode="@Model.BatchCode" class="btn btn-sm btn-primary fw-bold px-3 py-2 rounded-3 shadow-sm">
+                <i class="bi bi-arrow-right-circle me-1"></i> Tạo chặng tiếp theo
+            </a>
+        }
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>@TempData["SuccessMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>@TempData["ErrorMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- SƠ ĐỒ HÀNH TRÌNH LÔ HÀNG (AUDIT TRAIL) -->
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+    <h5 class="fw-800 mb-3 text-dark">
+        <i class="bi bi-diagram-3-fill text-primary me-2"></i>Hành trình luân chuyển của Lô hàng (@Model.BatchCode)
+    </h5>
+    <div class="d-flex flex-wrap align-items-center gap-3 p-3 rounded-4" style="background:#f8fafc; border:1px solid #e2e8f0;">
+        @for (int i = 0; i < batchJourney.Count; i++)
+        {
+            var leg = batchJourney[i];
+            bool isCurrent = (leg.Id == Model.Id);
+            <div class="card p-3 border-0 rounded-3 shadow-sm flex-grow-1" style="min-width:240px; background:@(isCurrent ? "#ffffff" : "#f1f5f9"); border:@(isCurrent ? "2px solid #2563eb" : "1px solid #e2e8f0") !important;">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="badge @(isCurrent ? "bg-primary" : "bg-secondary") small">Chặng @leg.LegIndex</span>
+                    @if (leg.Status == "Received")
+                    {
+                        <span class="badge bg-success-subtle text-success small fw-bold">✓ Đã nhận</span>
+                    }
+                    else if (leg.Status == "InTransit")
+                    {
+                        <span class="badge bg-warning-subtle text-warning small fw-bold">🚚 Đang đi</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary-subtle text-secondary small fw-bold">✕ Đã hủy</span>
+                    }
+                </div>
+                <div class="fw-bold text-dark mt-1">@leg.FromStore?.Name ➔ @leg.ToStore?.Name</div>
+                <div class="small text-muted mt-1 font-monospace">@leg.TransferCode</div>
+                <div class="small text-secondary mt-1">
+                    Xuất: @leg.CreatedAt.ToString("dd/MM HH:mm")
+                    @if (leg.ReceivedAt.HasValue)
+                    {
+                        <span> | Đến: @leg.ReceivedAt.Value.ToString("dd/MM HH:mm")</span>
+                    }
+                </div>
+                @if (!isCurrent)
+                {
+                    <a asp-action="Detail" asp-route-id="@leg.Id" class="small text-primary fw-bold text-decoration-none mt-2">
+                        Xem chặng này <i class="bi bi-arrow-right"></i>
+                    </a>
+                }
+                else
+                {
+                    <span class="small text-primary fw-bold mt-2"><i class="bi bi-check2"></i> Đang xem chặng này</span>
+                }
+            </div>
+
+            @if (i < batchJourney.Count - 1)
+            {
+                <div class="text-primary fs-3 d-none d-md-block">
+                    <i class="bi bi-arrow-right-circle-fill"></i>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- THÔNG TIN CHỨNG TỪ -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+            <h5 class="fw-800 mb-3 text-dark border-bottom pb-2">
+                <i class="bi bi-info-circle-fill text-primary me-2"></i>Thông tin chứng từ chặng
+            </h5>
+            <div class="mb-3">
+                <div class="text-muted small">Kho gửi hàng chặng này:</div>
+                <div class="fw-bold text-dark fs-6">@Model.FromStore?.Name</div>
+                <small class="text-muted">@Model.FromStore?.Address (@Model.FromStore?.ProvinceName)</small>
+            </div>
+            <div class="mb-3">
+                <div class="text-muted small">Kho tiếp nhận chặng này:</div>
+                <div class="fw-bold text-dark fs-6">
+                    @Model.ToStore?.Name
+                    @if (Model.ToStoreId == 5)
+                    {
+                        <span class="badge bg-warning-subtle text-warning ms-1">🏢 Trạm Hub</span>
+                    }
+                </div>
+                <small class="text-muted">@Model.ToStore?.Address (@Model.ToStore?.ProvinceName)</small>
+            </div>
+            <div class="mb-3">
+                <div class="text-muted small">Kho đích đến cuối cùng của Lô hàng:</div>
+                <div class="fw-bold text-primary fs-6">@Model.FinalDestinationStore?.Name</div>
+                <small class="text-muted">@Model.FinalDestinationStore?.ProvinceName</small>
+            </div>
+            <hr />
+            <div class="row g-2 mb-2 small">
+                <div class="col-6">
+                    <span class="text-muted">Người tạo phiếu:</span>
+                    <div class="fw-bold text-dark">@(Model.CreatedByName ?? "Quản trị viên")</div>
+                </div>
+                <div class="col-6">
+                    <span class="text-muted">Thời gian lập:</span>
+                    <div class="fw-bold text-dark">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                </div>
+                @if (Model.ReceivedAt.HasValue)
+                {
+                    <div class="col-6 mt-2">
+                        <span class="text-muted">Người nhận hàng:</span>
+                        <div class="fw-bold text-success">@(Model.ReceivedByName ?? "Nhân viên")</div>
+                    </div>
+                    <div class="col-6 mt-2">
+                        <span class="text-muted">Thời gian tiếp nhận:</span>
+                        <div class="fw-bold text-success">@Model.ReceivedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                    </div>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Note))
+            {
+                <div class="mt-2 p-2 rounded bg-light small">
+                    <span class="text-muted fw-bold">Ghi chú:</span> @Model.Note
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- DANH SÁCH MẶT HÀNG -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+            <h5 class="fw-800 mb-3 text-dark border-bottom pb-2 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-boxes text-primary me-2"></i>Mặt hàng luân chuyển</span>
+                <span class="badge bg-primary rounded-pill px-3 py-2">Tổng SL: @totalQty</span>
+            </h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="small fw-bold">Tên sản phẩm</th>
+                            <th class="small fw-bold">Mã SKU</th>
+                            <th class="small fw-bold">Phân loại</th>
+                            <th class="small fw-bold text-center" style="width:120px;">Số lượng chuyển</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Lines != null && Model.Lines.Any())
+                        {
+                            foreach (var line in Model.Lines)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">@line.Variant?.Product?.Name</div>
+                                    </td>
+                                    <td><code class="text-muted">@line.Variant?.SKU</code></td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(line.Variant?.ColorName))
+                                        {
+                                            <span class="badge bg-light text-dark border me-1">@line.Variant.ColorName</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(line.Variant?.Volume))
+                                        {
+                                            <span class="badge bg-light text-primary border">@line.Variant.Volume</span>
+                                        }
+                                    </td>
+                                    <td class="text-center fw-bold text-primary fs-6">
+                                        @line.Quantity
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL XÁC NHẬN TIẾP NHẬN HÀNG -->
+<div class="modal fade" id="receiveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-800 text-dark"><i class="bi bi-check-circle-fill text-success me-2"></i>Xác nhận nhận hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-action="Receive" asp-route-id="@Model.Id">
+                <div class="modal-body pt-3">
+                    <p class="mb-2">Bạn đang xác nhận tiếp nhận kiện hàng <strong>@Model.TransferCode</strong> tại kho <strong>@Model.ToStore?.Name</strong>.</p>
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="bi bi-info-circle me-1"></i> Sau khi xác nhận, tồn kho tại <strong>@Model.ToStore?.Name</strong> sẽ được cộng thêm đúng <strong>@totalQty</strong> sản phẩm.
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-secondary">Ghi chú kiểm đếm khi nhận (nếu có)</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="Hàng nguyên đai nguyên kiện, đủ số lượng..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-success fw-bold px-4">Xác nhận nhập kho</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL HỦY PHIẾU CHUYỂN KHO -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-800 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Hủy phiếu chuyển kho</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-action="Cancel" asp-route-id="@Model.Id">
+                <div class="modal-body pt-3">
+                    <p class="text-danger mb-2">Hủy phiếu chuyển kho khi hàng đang trên đường sẽ hoàn trả lại toàn bộ tồn kho cho kho gửi <strong>@Model.FromStore?.Name</strong>.</p>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-secondary">Lý do hủy phiếu <span class="text-danger">*</span></label>
+                        <input type="text" name="reason" class="form-control" placeholder="Xe gặp sự cố, điều phối thay đổi kế hoạch..." required />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-danger fw-bold px-4">Hủy phiếu ngay</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

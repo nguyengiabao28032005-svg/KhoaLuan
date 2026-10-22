@@ -1,0 +1,266 @@
+@model IEnumerable<BeautyShop.Models.UserVoucher>
+
+@{
+    ViewData["Title"] = "Voucher của tôi";
+    var now = DateTime.Now;
+
+    var available = Model.Where(uv => !uv.IsUsed && uv.Voucher != null && uv.Voucher.IsActive && now <= uv.Voucher.EndDate).ToList();
+    var used = Model.Where(uv => uv.IsUsed).ToList();
+    var expired = Model.Where(uv => !uv.IsUsed && uv.Voucher != null && (now > uv.Voucher.EndDate || !uv.Voucher.IsActive)).ToList();
+}
+
+@section Styles {
+    <style>
+        .my-v-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1.5px solid #e8edf5;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            transition: transform 0.2s;
+        }
+        .my-v-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+        .my-v-left {
+            width: 110px;
+            background: linear-gradient(135deg, #006E4A, #009665);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 14px 8px;
+            flex-shrink: 0;
+        }
+        .my-v-left.disabled {
+            background: #94a3b8;
+        }
+        .my-v-val {
+            font-size: 1.4rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+        .my-v-sub {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        .my-v-right {
+            flex: 1;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+    </style>
+}
+
+<div class="py-2">
+    <!-- BREADCRUMB -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+                <a asp-controller="Home" asp-action="Index" style="color:#718096;text-decoration:none;font-weight:600;font-size:13px;">
+                    <i class="bi bi-house me-1"></i>Trang chủ
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a asp-controller="Account" asp-action="Profile" style="color:#718096;text-decoration:none;font-weight:600;font-size:13px;">Tài khoản</a>
+            </li>
+            <li class="breadcrumb-item active fw-bold" style="font-size:13px;" aria-current="page">Voucher của tôi</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-wallet2 text-success me-2"></i>Ví Voucher Của Tôi
+            </h3>
+            <p class="text-muted small mb-0">Quản lý và sử dụng các mã giảm giá bạn đã thu thập từ shop</p>
+        </div>
+        <a asp-controller="Voucher" asp-action="Index" class="btn btn-outline-success fw-bold px-4 rounded-pill">
+            <i class="bi bi-plus-circle me-1"></i> Tìm thêm mã ưu đãi
+        </a>
+    </div>
+
+    <!-- TABS NAVIGATION -->
+    <ul class="nav nav-pills mb-4" id="voucherTabs" role="tablist" style="border-bottom: 2px solid #e8edf5; padding-bottom: 8px;">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold px-4 rounded-pill" id="avail-tab" data-bs-toggle="pill" data-bs-target="#tab-avail" type="button" role="tab">
+                Chưa sử dụng <span class="badge bg-success ms-1">@available.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-4 rounded-pill text-secondary" id="used-tab" data-bs-toggle="pill" data-bs-target="#tab-used" type="button" role="tab">
+                Đã sử dụng <span class="badge bg-secondary ms-1">@used.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-4 rounded-pill text-secondary" id="expired-tab" data-bs-toggle="pill" data-bs-target="#tab-expired" type="button" role="tab">
+                Hết hạn <span class="badge bg-danger ms-1">@expired.Count</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- TAB CONTENTS -->
+    <div class="tab-content" id="voucherTabsContent">
+
+        <!-- TAB 1: CHƯA SỬ DỤNG -->
+        <div class="tab-pane fade show active" id="tab-avail" role="tabpanel">
+            <div class="row g-4">
+                @if (available.Any())
+                {
+                    foreach (var uv in available)
+                    {
+                        var v = uv.Voucher!;
+                        <div class="col-lg-6">
+                            <div class="my-v-card">
+                                <div class="my-v-left">
+                                    <div class="my-v-val">@(v.DiscountType == "Percent" ? $"{v.DiscountValue:G29}%" : $"{v.DiscountValue/1000:N0}K")</div>
+                                    <div class="my-v-sub">@(v.DiscountType == "Percent" ? "GIẢM GIÁ" : "GIẢM TIỀN")</div>
+                                </div>
+                                <div class="my-v-right">
+                                    <div>
+                                        <h5 class="fw-bold text-dark mb-1">🎁 @(!string.IsNullOrEmpty(v.Name) ? v.Name : v.Code)</h5>
+                                        <div class="small text-muted mb-1">
+                                            @if (v.DiscountType == "Percent")
+                                            {
+                                                <span>Giảm @v.DiscountValue.ToString("G29")% @(v.MaxDiscountAmount.HasValue ? $"(Tối đa {v.MaxDiscountAmount.Value:N0}đ)" : "")</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Giảm @v.DiscountValue.ToString("N0")đ</span>
+                                            }
+                                        </div>
+                                        <div class="small text-muted">
+                                            Đơn tối thiểu: <strong>@(v.MinOrderValue > 0 ? v.MinOrderValue.ToString("N0") + "đ" : "0đ")</strong>
+                                        </div>
+                                        <div class="small text-danger fw-bold mt-1">
+                                            <i class="bi bi-clock me-1"></i>HSD: @v.EndDate.ToString("dd/MM/yyyy")
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                                        <span class="badge bg-light text-primary font-monospace fs-6 border">@v.Code</span>
+                                        <button type="button" class="btn btn-sm btn-success fw-bold px-3 btn-use-voucher" data-code="@v.Code">
+                                            Dùng ngay <i class="bi bi-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="col-12 text-center py-5">
+                        <i class="bi bi-ticket-perforated fs-1 text-muted d-block mb-3"></i>
+                        <h5 class="fw-bold text-dark">Bạn chưa có voucher khả dụng nào</h5>
+                        <p class="text-muted">Hãy ghé thăm Kho Voucher để lưu các mã ưu đãi độc quyền!</p>
+                        <a asp-action="Index" class="btn btn-success px-4 rounded-pill fw-bold">Xem kho voucher</a>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- TAB 2: ĐÃ SỬ DỤNG -->
+        <div class="tab-pane fade" id="tab-used" role="tabpanel">
+            <div class="row g-4">
+                @if (used.Any())
+                {
+                    foreach (var uv in used)
+                    {
+                        var v = uv.Voucher;
+                        <div class="col-lg-6">
+                            <div class="my-v-card opacity-75">
+                                <div class="my-v-left disabled">
+                                    <div class="my-v-val">@(v != null && v.DiscountType == "Percent" ? $"{v.DiscountValue:G29}%" : v != null ? $"{v.DiscountValue/1000:N0}K" : "-")</div>
+                                    <div class="my-v-sub">ĐÃ DÙNG</div>
+                                </div>
+                                <div class="my-v-right">
+                                    <div>
+                                        <h5 class="fw-bold text-dark mb-1">🎁 @(v != null && !string.IsNullOrEmpty(v.Name) ? v.Name : v?.Code ?? "Voucher")</h5>
+                                        <div class="small text-muted mb-1">
+                                            Mã: <span class="font-monospace fw-bold">@(v?.Code ?? "")</span>
+                                        </div>
+                                        <div class="small text-muted">
+                                            Đã sử dụng vào: <strong>@(uv.UsedAt.HasValue ? uv.UsedAt.Value.ToString("dd/MM/yyyy HH:mm") : "-")</strong>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-end">
+                                        <span class="badge bg-secondary">Đã dùng xong</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="col-12 text-center py-5 text-muted">
+                        Chưa có mã giảm giá nào được sử dụng.
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- TAB 3: HẾT HẠN -->
+        <div class="tab-pane fade" id="tab-expired" role="tabpanel">
+            <div class="row g-4">
+                @if (expired.Any())
+                {
+                    foreach (var uv in expired)
+                    {
+                        var v = uv.Voucher;
+                        <div class="col-lg-6">
+                            <div class="my-v-card opacity-50">
+                                <div class="my-v-left disabled">
+                                    <div class="my-v-val">@(v != null && v.DiscountType == "Percent" ? $"{v.DiscountValue:G29}%" : v != null ? $"{v.DiscountValue/1000:N0}K" : "-")</div>
+                                    <div class="my-v-sub">HẾT HẠN</div>
+                                </div>
+                                <div class="my-v-right">
+                                    <div>
+                                        <h5 class="fw-bold text-dark mb-1">🎁 @(v != null && !string.IsNullOrEmpty(v.Name) ? v.Name : v?.Code ?? "Voucher")</h5>
+                                        <div class="small text-muted">
+                                            Mã: <span class="font-monospace fw-bold">@(v?.Code ?? "")</span>
+                                        </div>
+                                        <div class="small text-danger fw-bold mt-1">
+                                            Hạn dùng: @(v?.EndDate.ToString("dd/MM/yyyy") ?? "-")
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-end">
+                                        <span class="badge bg-danger">Đã quá hạn dùng</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="col-12 text-center py-5 text-muted">
+                        Không có mã giảm giá nào bị quá hạn.
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('.btn-use-voucher').on('click', function() {
+                var code = $(this).data('code');
+                localStorage.setItem('AppliedVoucher', code);
+                window.location.href = '/Cart';
+            });
+        });
+    </script>
+}

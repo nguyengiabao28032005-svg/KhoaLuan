@@ -1,0 +1,93 @@
+@model IEnumerable<BeautyShop.Models.InventoryLog>
+@{
+    var variant  = ViewBag.Variant  as BeautyShop.Models.ProductVariant;
+    var inventory = ViewBag.Inventory as BeautyShop.Models.Inventory;
+    ViewData["Title"] = "Lịch sử kho";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="@Url.Action("Index", "Inventory", new { area = "Admin" })"
+       class="btn btn-outline-secondary rounded-3 fw-700">
+        <i class="bi bi-arrow-left"></i> Quay lại
+    </a>
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">🕐 Lịch sử kho</h2>
+        <p class="text-muted mb-0">@variant?.Product?.Name — SKU: @variant?.SKU</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 mb-3">
+    <div class="card-body d-flex gap-4 py-3 px-4">
+        <div>
+            <div class="text-muted fw-600" style="font-size:12px;">TỒN KHO HIỆN TẠI</div>
+            <div class="fw-900" style="font-size:2rem;color:#006E4A;">@(inventory?.StockQuantity ?? 0)</div>
+        </div>
+        <div>
+            <div class="text-muted fw-600" style="font-size:12px;">TỔNG LƯỢT THAY ĐỔI</div>
+            <div class="fw-900" style="font-size:2rem;color:#1a1a2e;">@Model.Count()</div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-clock-history" style="font-size:3rem;"></i>
+                <p class="mt-2">Chưa có lịch sử thay đổi.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background:#f8fafc;">
+                        <tr>
+                            <th class="px-4 py-3">Thời gian</th>
+                            <th class="py-3">Loại thay đổi</th>
+                            <th class="py-3 text-center">Số lượng</th>
+                            <th class="py-3">Ghi chú</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in Model)
+                        {
+                            string badgeColor = log.ChangeType switch {
+                                "Order"       => "danger",
+                                "Cancel"      => "success",
+                                "Import"      => "primary",
+                                "SetQuantity" => "secondary",
+                                _             => "secondary"
+                            };
+                            string changeIcon = log.QuantityChanged >= 0 ? "↑" : "↓";
+                            string changeColor = log.QuantityChanged >= 0 ? "#006E4A" : "#e53935";
+
+                            <tr>
+                                <td class="px-4 py-3 text-muted fw-600" style="font-size:13px;">
+                                    @log.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                </td>
+                                <td class="py-3">
+                                    <span class="badge bg-@badgeColor-subtle text-@badgeColor rounded-pill px-3 fw-700">
+                                        @(log.ChangeType switch {
+                                            "Order"       => "Đặt hàng",
+                                            "Cancel"      => "Hủy đơn",
+                                            "Import"      => "Nhập kho",
+                                            "SetQuantity" => "Cập nhật",
+                                            _             => log.ChangeType
+                                        })
+                                    </span>
+                                </td>
+                                <td class="py-3 text-center fw-900" style="font-size:1.1rem;color:@changeColor;">
+                                    @changeIcon @Math.Abs(log.QuantityChanged)
+                                </td>
+                                <td class="py-3 text-muted">@log.Note</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,489 @@
+@inject BeautyShop.Services.ICurrentUserScope UserScope
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    string Nav(string name, string action = "") => currentController == name && (string.IsNullOrEmpty(action) || currentAction == action) ? "active" : "";
+
+    var liveRole = await UserScope.GetRoleNameAsync();
+    var userRole = !string.IsNullOrEmpty(liveRole) ? liveRole : (Context.Session.GetString("Role") ?? "");
+    var isAdmin = await UserScope.IsAdminAsync() || userRole == "Admin";
+    var isEmployee = userRole != "Admin" && !string.IsNullOrEmpty(userRole);
+
+    bool canProductManage = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.ProductManage);
+    bool canPriceSet = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.PriceSet);
+    bool canInventoryReceive = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.InventoryReceive);
+    bool canInventoryTransfer = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.InventoryTransfer);
+    bool canPortManage = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.PortManage);
+    bool canDeliveryDispatch = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.DeliveryDispatch);
+    bool canDeliveryExecute = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.DeliveryExecute);
+    bool canPaymentProcess = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.PaymentProcess);
+    bool canCashierReconcile = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.CashierReconcile);
+    bool canReportView = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.ReportView);
+    bool canUserManage = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.UserManage);
+    bool canRoleManage = isAdmin || await UserScope.HasPermissionAsync(BeautyShop.Models.AppPermissions.RoleManage);
+
+    var allowedStores = await UserScope.GetAllowedStoreIdsAsync();
+    string roleDisplayName = BeautyShop.Models.AppRoles.GetDisplayName(userRole);
+
+    bool isProductGroup = currentController is "Products" or "Categories" or "Brand";
+    bool isMarketingGroup = currentController is "Vouchers" or "FlashSales";
+    bool isWarehouseGroup = currentController is "Inventory" or "Transfers" or "ImportPorts" or "Delivery";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - BeautyShop Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: 'Nunito', sans-serif; background: #f1f5f9; margin: 0; padding: 0; overflow-x: hidden; }
+        a { text-decoration: none; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            --green: #006E4A; --green-l: #009665; --green-d: #003d29;
+            --sidebar-bg: #0f172a; --sidebar-w: 250px;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.07);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.11);
+            --transition: all 0.22s ease;
+            --hasaki-green: #006E4A; --hasaki-green-light: #009665;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .adm-sidebar {
+            width: var(--sidebar-w); height: 100vh; position: fixed; left: 0; top: 0; z-index: 1000;
+            background: linear-gradient(180deg, #0f172a 0%, #1a2744 100%);
+            display: flex; flex-direction: column;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.22);
+            overflow-y: auto;
+        }
+        .sb-logo {
+            padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.07);
+            display: flex; align-items: center; gap: 11px;
+        }
+        .sb-logo-icon {
+            width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+            background: linear-gradient(135deg, #006E4A, #009665);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.15rem;
+        }
+        .sb-logo-name  { font-size: 1.05rem; font-weight: 900; color: #f8fafc; line-height: 1.2; }
+        .sb-logo-sub   { font-size: 10px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; }
+        .sb-section    { padding: 16px 18px 4px; font-size: 10px; font-weight: 900; color: #334155; text-transform: uppercase; letter-spacing: 1.2px; }
+        .sb-nav        { list-style: none; padding: 4px 10px; margin: 0; }
+        .sb-nav li     { margin-bottom: 2px; }
+        .sb-nav a {
+            display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px;
+            color: #94a3b8; font-size: 13.5px; font-weight: 700; transition: var(--transition);
+        }
+        .sb-nav a i  { font-size: 1rem; width: 18px; text-align: center; flex-shrink: 0; }
+        .sb-nav a:hover { background: rgba(255,255,255,0.08); color: #e2e8f0; }
+        .sb-nav a.active {
+            background: linear-gradient(135deg, #006E4A, #009665);
+            color: #fff; box-shadow: 0 3px 12px rgba(0,110,74,0.35);
+        }
+        .sb-collapse-btn {
+            display: flex; align-items: center; justify-content: space-between; width: 100%;
+            padding: 9px 12px; border-radius: 10px; border: none; background: transparent;
+            color: #94a3b8; font-size: 13.5px; font-weight: 700; transition: var(--transition);
+            text-align: left; cursor: pointer; text-decoration: none;
+        }
+        .sb-collapse-btn:hover { background: rgba(255,255,255,0.08); color: #e2e8f0; }
+        .sb-collapse-btn.active-parent {
+            color: #34d399; background: rgba(0, 110, 74, 0.2); font-weight: 800;
+        }
+        .sb-collapse-btn .arrow-icon {
+            font-size: 0.75rem; transition: transform 0.25s ease; opacity: 0.7;
+        }
+        .sb-collapse-btn:not(.collapsed) .arrow-icon {
+            transform: rotate(180deg); opacity: 1;
+        }
+        .sb-subnav {
+            list-style: none; padding: 4px 0 6px 14px; margin: 4px 0 6px 16px;
+            border-left: 2px solid rgba(255,255,255,0.12);
+        }
+        .sb-subnav li { margin-bottom: 2px; }
+        .sb-subnav a {
+            display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px;
+            color: #94a3b8; font-size: 12.5px; font-weight: 700; transition: var(--transition);
+        }
+        .sb-subnav a:hover { color: #f8fafc; background: rgba(255,255,255,0.08); }
+        .sb-subnav a.active {
+            color: #fff; background: linear-gradient(135deg, #006E4A, #009665);
+            box-shadow: 0 2px 8px rgba(0,110,74,0.3); font-weight: 800;
+        }
+        .sb-subnav a i { font-size: 0.9rem; width: 16px; text-align: center; }
+        .sb-footer {
+            padding: 14px 10px; border-top: 1px solid rgba(255,255,255,0.07); margin-top: auto;
+        }
+        .sb-user {
+            display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+            border-radius: 10px; background: rgba(255,255,255,0.06);
+        }
+        .sb-user-ava {
+            width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+            background: linear-gradient(135deg, #006E4A, #009665);
+            display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.9rem;
+        }
+        .sb-user-name { font-size: 13px; font-weight: 800; color: #e2e8f0; }
+        .sb-user-role { font-size: 10.5px; color: #34d399; font-weight: 700; }
+
+        /* ===== MAIN CONTENT ===== */
+        .adm-main  { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+        .adm-topbar {
+            background: #fff; padding: 12px 26px; position: sticky; top: 0; z-index: 990;
+            border-bottom: 2px solid #f1f5f9; box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        }
+        .tb-title { font-size: 0.95rem; font-weight: 900; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+        .tb-sub   { font-size: 12px; color: #94a3b8; font-weight: 600; margin-top: 2px; }
+        .tb-right { display: flex; align-items: center; gap: 12px; }
+        .tb-icon-btn {
+            width: 36px; height: 36px; border-radius: 9px; background: #f8fafc; border: 1.5px solid #e2e8f0;
+            display: flex; align-items: center; justify-content: center;
+            color: #64748b; font-size: 1rem; transition: var(--transition);
+        }
+        .tb-icon-btn:hover { background: var(--green); color: #fff; border-color: var(--green); }
+        .tb-user { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: #334155; }
+        .tb-ava  {
+            width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+            background: linear-gradient(135deg, #006E4A, #009665);
+            display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.8rem;
+        }
+        .adm-page { padding: 24px; flex: 1; }
+
+        /* ===== CARDS ===== */
+        .admin-card {
+            background: #fff; border-radius: 14px;
+            border: 1.5px solid #e8edf5;
+            box-shadow: var(--shadow-sm); overflow: hidden;
+        }
+        .admin-card-header {
+            padding: 15px 22px; border-bottom: 1.5px solid #f1f5f9;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+        }
+        .admin-card-header h5 { font-size: 0.92rem; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 8px; }
+        .admin-card-body { padding: 22px; }
+
+        /* ===== TABLE ===== */
+        .admin-table { margin: 0; }
+        .admin-table th {
+            background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.8px; padding: 12px 18px;
+            border-color: #f1f5f9; white-space: nowrap; vertical-align: middle;
+        }
+        .admin-table td { padding: 12px 18px; vertical-align: middle; font-size: 13.5px; font-weight: 600; color: #334155; border-color: #f1f5f9; }
+        .admin-table tbody tr { transition: background 0.15s; }
+        .admin-table tbody tr:hover { background: #f8fafc; }
+
+        /* ===== BUTTONS ===== */
+        .btn-ap, .btn-as, .btn-ae, .btn-ad, .btn-aw {
+            display: inline-flex; align-items: center; gap: 6px;
+            border-radius: 10px; font-weight: 800; font-family: 'Nunito', sans-serif;
+            cursor: pointer; transition: var(--transition); border: none; outline: none;
+            padding: 9px 18px; font-size: 13.5px; text-decoration: none; white-space: nowrap;
+        }
+        .btn-ap { background: linear-gradient(135deg, #006E4A, #009665); color: #fff !important; }
+        .btn-ap:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,110,74,0.28); color: #fff !important; }
+        .btn-as { background: #f1f5f9; color: #475569 !important; }
+        .btn-as:hover { background: #e2e8f0; color: #1e293b !important; }
+        .btn-ae { background: #eff6ff; color: #2563eb !important; border: 1.5px solid #bfdbfe; }
+        .btn-ae:hover { background: #2563eb; color: #fff !important; border-color: #2563eb; }
+        .btn-ad { background: #fff1f2; color: #dc2626 !important; border: 1.5px solid #fecdd3; }
+        .btn-ad:hover { background: #dc2626; color: #fff !important; border-color: #dc2626; }
+        .btn-aw { background: #fffbeb; color: #d97706 !important; border: 1.5px solid #fde68a; }
+        .btn-aw:hover { background: #d97706; color: #fff !important; border-color: #d97706; }
+        .btn-ap.sm, .btn-as.sm, .btn-ae.sm, .btn-ad.sm, .btn-aw.sm { padding: 6px 12px; font-size: 12.5px; border-radius: 8px; }
+
+        /* ===== BADGES ===== */
+        .bdg {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 11px; border-radius: 20px; font-size: 12px; font-weight: 800; white-space: nowrap;
+        }
+        .bdg::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+        .bdg-green  { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .bdg-red    { background: #fff1f2; color: #dc2626; border: 1px solid #fecdd3; }
+        .bdg-orange { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+        .bdg-blue   { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .bdg-purple { background: #fdf4ff; color: #9333ea; border: 1px solid #e9d5ff; }
+        .bdg-yellow { background: #fefce8; color: #ca8a04; border: 1px solid #fde047; }
+
+        /* ===== FORM ELEMENTS ===== */
+        .f-label { font-size: 11.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 7px; display: block; }
+        .f-ctrl {
+            border: 2px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;
+            font-size: 13.5px; font-weight: 600; font-family: 'Nunito', sans-serif;
+            color: #334155; width: 100%; background: #fff; transition: border-color 0.2s; display: block;
+        }
+        .f-ctrl:focus { border-color: #006E4A !important; box-shadow: 0 0 0 3px rgba(0,110,74,0.12) !important; outline: none; }
+        .form-control:focus, .form-select:focus { border-color: #006E4A !important; box-shadow: 0 0 0 3px rgba(0,110,74,0.12) !important; }
+
+        /* ===== PAGE HEADER ===== */
+        .page-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+        .page-hdr h2 { font-size: 1.35rem; font-weight: 900; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .ph-sub { font-size: 12.5px; color: #94a3b8; font-weight: 600; margin-top: 4px; }
+
+        /* ===== SEARCH BAR ===== */
+        .search-wrap { display: flex; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #fff; }
+        .search-wrap input { border: none; padding: 8px 14px; font-size: 13.5px; font-weight: 600; flex: 1; outline: none; font-family: 'Nunito', sans-serif; color: #334155; min-width: 200px; }
+        .search-wrap input::placeholder { color: #cbd5e1; }
+        .search-wrap button { background: #006E4A; color: #fff; border: none; padding: 8px 16px; font-size: 1rem; cursor: pointer; transition: var(--transition); }
+        .search-wrap button:hover { background: #003d29; }
+
+        /* ===== ALERTS ===== */
+        .alert-ok  { background: #f0fdf4; border: 1.5px solid #bbf7d0; color: #16a34a; border-radius: 10px; padding: 12px 18px; font-size: 13.5px; font-weight: 700; }
+        .alert-err { background: #fff1f2; border: 1.5px solid #fecdd3; color: #dc2626; border-radius: 10px; padding: 12px 18px; font-size: 13.5px; font-weight: 700; }
+        .alert-warn{ background: #fffbeb; border: 1.5px solid #fde68a; color: #b45309; border-radius: 10px; padding: 12px 18px; font-size: 13.5px; font-weight: 700; }
+
+        /* ===== STAT CARDS (for Dashboard) ===== */
+        .stat-card { background: #fff; border-radius: 16px; border: 1.5px solid #e8edf5; box-shadow: var(--shadow-sm); padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; position: relative; overflow: hidden; transition: var(--transition); }
+        .stat-card::before { content: ''; position: absolute; left: 0; top: 0; width: 5px; height: 100%; border-radius: 16px 0 0 16px; }
+        .stat-card.s-blue::before   { background: linear-gradient(180deg,#38bdf8,#2563eb); }
+        .stat-card.s-green::before  { background: linear-gradient(180deg,#4ade80,#16a34a); }
+        .stat-card.s-orange::before { background: linear-gradient(180deg,#fb923c,#ea580c); }
+        .stat-card.s-red::before    { background: linear-gradient(180deg,#f87171,#dc2626); }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+        .stat-info h6 { color: #94a3b8; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+        .stat-info h2 { color: #0f172a; font-size: 2rem; font-weight: 900; margin: 0 0 4px; line-height: 1; }
+        .stat-info .si-sub { font-size: 12px; font-weight: 700; color: #94a3b8; }
+        .stat-info .si-sub.up { color: #16a34a; }
+        .stat-icon { width: 54px; height: 54px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0; }
+        .si-blue   { background: #eff6ff; color: #2563eb; }
+        .si-green  { background: #f0fdf4; color: #16a34a; }
+        .si-orange { background: #fff7ed; color: #ea580c; }
+        .si-red    { background: #fff1f2; color: #dc2626; }
+
+        /* ===== RESPONSIVE ===== */
+        @@media (max-width: 991px) {
+            .adm-sidebar { transform: translateX(-100%); }
+            .adm-main { margin-left: 0; }
+        }
+    </style>
+    <link rel="stylesheet" href="~/css/3d/shared.css" asp-append-version="true" />
+    @if (isAdmin)
+    {
+        <link rel="stylesheet" href="~/css/3d/admin.css" asp-append-version="true" />
+    }
+    @if (isEmployee)
+    {
+        <link rel="stylesheet" href="~/css/3d/staff.css" asp-append-version="true" />
+    }
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+
+<!-- ===== SIDEBAR (HIỂN THỊ THEO QUYỀN CHỨC NĂNG - BƯỚC 6) ===== -->
+<aside class="adm-sidebar">
+    <div class="sb-logo">
+        <div class="sb-logo-icon"><i class="bi bi-bag-heart-fill"></i></div>
+        <div>
+            <div class="sb-logo-name">BeautyShop</div>
+            <div class="sb-logo-sub">@roleDisplayName</div>
+        </div>
+    </div>
+
+    @if (canReportView)
+    {
+        <div class="sb-section">Tổng quan &amp; Báo cáo</div>
+        <ul class="sb-nav">
+            <li>
+                <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index" class="@Nav("Dashboard")">
+                    <i class="bi bi-speedometer2"></i> Báo cáo &amp; Thống kê
+                </a>
+            </li>
+        </ul>
+    }
+
+    @if (canProductManage || canPriceSet || canPaymentProcess)
+    {
+        <div class="sb-section">Kinh doanh &amp; Thu ngân</div>
+        <ul class="sb-nav">
+            @if (canProductManage || canPriceSet)
+            {
+                <li>
+                    <button class="sb-collapse-btn @(isProductGroup ? "" : "collapsed") @(isProductGroup ? "active-parent" : "")" 
+                            type="button" data-bs-toggle="collapse" data-bs-target="#productSubmenu" aria-expanded="@(isProductGroup ? "true" : "false")">
+                        <span class="d-flex align-items-center gap-2"><i class="bi bi-box-seam"></i> Sản phẩm &amp; Giá</span>
+                        <i class="bi bi-chevron-down arrow-icon"></i>
+                    </button>
+                    <div class="collapse @(isProductGroup ? "show" : "")" id="productSubmenu">
+                        <ul class="sb-subnav">
+                            @if (canProductManage)
+                            {
+                                <li><a asp-area="Admin" asp-controller="Products" asp-action="Index" class="@Nav("Products", "Index")"><i class="bi bi-grid-fill"></i> Tất cả sản phẩm</a></li>
+                            }
+                            @if (canPriceSet)
+                            {
+                                <li><a asp-area="Admin" asp-controller="Products" asp-action="Pricing" class="@Nav("Products", "Pricing")"><i class="bi bi-tag-fill"></i> Thiết lập giá bán</a></li>
+                            }
+                            @if (canProductManage)
+                            {
+                                <li><a asp-area="Admin" asp-controller="Categories" asp-action="Index" class="@Nav("Categories")"><i class="bi bi-tags-fill"></i> Danh mục</a></li>
+                                <li><a asp-area="Admin" asp-controller="Brand" asp-action="Index" class="@Nav("Brand")"><i class="bi bi-award-fill"></i> Thương hiệu</a></li>
+                            }
+                        </ul>
+                    </div>
+                </li>
+            }
+            @if (canPaymentProcess)
+            {
+                <li><a asp-area="Admin" asp-controller="Orders" asp-action="Index" class="@Nav("Orders")"><i class="bi bi-receipt-cutoff"></i> Đơn hàng &amp; Thanh toán</a></li>
+            }
+            @if (isAdmin)
+            {
+                <li><a asp-area="Admin" asp-controller="Users" asp-action="Index" class="@Nav("Users")"><i class="bi bi-people-fill"></i> Khách hàng</a></li>
+                <li>
+                    <button class="sb-collapse-btn @(isMarketingGroup ? "" : "collapsed") @(isMarketingGroup ? "active-parent" : "")" 
+                            type="button" data-bs-toggle="collapse" data-bs-target="#marketingSubmenu" aria-expanded="@(isMarketingGroup ? "true" : "false")">
+                        <span class="d-flex align-items-center gap-2"><i class="bi bi-ticket-perforated"></i> Khuyến mãi &amp; Sale</span>
+                        <i class="bi bi-chevron-down arrow-icon"></i>
+                    </button>
+                    <div class="collapse @(isMarketingGroup ? "show" : "")" id="marketingSubmenu">
+                        <ul class="sb-subnav">
+                            <li><a asp-area="Admin" asp-controller="Vouchers" asp-action="Index" class="@Nav("Vouchers")"><i class="bi bi-ticket-detailed-fill"></i> Voucher giảm giá</a></li>
+                            <li><a asp-area="Admin" asp-controller="FlashSales" asp-action="Index" class="@Nav("FlashSales")"><i class="bi bi-lightning-charge-fill"></i> Flash Sale</a></li>
+                        </ul>
+                    </div>
+                </li>
+                <li><a asp-area="Admin" asp-controller="Reviews" asp-action="Index" class="@Nav("Reviews")"><i class="bi bi-star-half"></i> Đánh giá</a></li>
+                <li><a asp-area="Admin" asp-controller="Consultations" asp-action="Index" class="@Nav("Consultations")"><i class="bi bi-calendar2-heart"></i> Quản lý tư vấn</a></li>
+            }
+        </ul>
+    }
+
+    @if (canInventoryReceive || canInventoryTransfer || canPortManage || canDeliveryDispatch || canDeliveryExecute || canCashierReconcile)
+    {
+        <div class="sb-section">Kho vận &amp; Giao nhận</div>
+        <ul class="sb-nav">
+            <li>
+                <button class="sb-collapse-btn @(isWarehouseGroup ? "" : "collapsed") @(isWarehouseGroup ? "active-parent" : "")" 
+                        type="button" data-bs-toggle="collapse" data-bs-target="#warehouseSubmenu" aria-expanded="@(isWarehouseGroup ? "true" : "false")">
+                    <span class="d-flex align-items-center gap-2"><i class="bi bi-truck"></i> Kho vận &amp; Giao nhận</span>
+                    <i class="bi bi-chevron-down arrow-icon"></i>
+                </button>
+                <div class="collapse @(isWarehouseGroup ? "show" : "")" id="warehouseSubmenu">
+                    <ul class="sb-subnav">
+                        @if (canInventoryReceive)
+                        {
+                            <li><a asp-area="Admin" asp-controller="Inventory" asp-action="Index" class="@Nav("Inventory")"><i class="bi bi-box-seam-fill"></i> Tồn kho &amp; Nhập hàng</a></li>
+                        }
+                        @if (canInventoryTransfer)
+                        {
+                            <li><a asp-area="Admin" asp-controller="Transfers" asp-action="Index" class="@Nav("Transfers", "Index")"><i class="bi bi-arrow-left-right"></i> Chuyển kho liên tỉnh</a></li>
+                            <li><a asp-area="Admin" asp-controller="Transfers" asp-action="TransitHub" class="@Nav("Transfers", "TransitHub")"><i class="bi bi-diagram-3-fill"></i> Hàng chờ tại Hub</a></li>
+                        }
+                        @if (canPortManage)
+                        {
+                            <li><a asp-area="Admin" asp-controller="ImportPorts" asp-action="Index" class="@Nav("ImportPorts")"><i class="bi bi-geo-alt-fill"></i> Cảng nhập khẩu</a></li>
+                        }
+                        @if (canDeliveryDispatch)
+                        {
+                            <li><a asp-area="Admin" asp-controller="Delivery" asp-action="Planner" class="@Nav("Delivery", "Planner")"><i class="bi bi-signpost-split-fill"></i> Lập chuyến giao tối ưu</a></li>
+                            <li><a asp-area="Admin" asp-controller="Delivery" asp-action="Trips" class="@Nav("Delivery", "Trips")"><i class="bi bi-truck-flatbed"></i> Danh sách chuyến giao</a></li>
+                        }
+                        @if (canCashierReconcile)
+                        {
+                            <li><a asp-area="Admin" asp-controller="Delivery" asp-action="Settlement" class="@Nav("Delivery", "Settlement")"><i class="bi bi-cash-coin"></i> Quyết toán tiền COD</a></li>
+                            <li><a asp-area="Admin" asp-controller="Delivery" asp-action="Reconciliation" class="@Nav("Delivery", "Reconciliation")"><i class="bi bi-journal-check"></i> Đối soát cuối ngày</a></li>
+                        }
+                        @if (canDeliveryExecute)
+                        {
+                            <li><a asp-area="Admin" asp-controller="Delivery" asp-action="MyTrips" class="@Nav("Delivery", "MyTrips")"><i class="bi bi-person-walking"></i> Chuyến của tôi (Shipper)</a></li>
+                        }
+                    </ul>
+                </div>
+            </li>
+        </ul>
+    }
+
+    @if (canUserManage || canRoleManage)
+    {
+        <div class="sb-section">Nhân sự &amp; Phân quyền</div>
+        <ul class="sb-nav">
+            @if (canUserManage)
+            {
+                <li><a asp-area="Admin" asp-controller="Employees" asp-action="Index" class="@Nav("Employees")"><i class="bi bi-person-badge-fill"></i> Quản lý Nhân viên</a></li>
+            }
+            @if (canRoleManage)
+            {
+                <li><a asp-area="Admin" asp-controller="RoleManagement" asp-action="Matrix" class="@Nav("RoleManagement")"><i class="bi bi-shield-lock-fill"></i> Ma trận Phân quyền</a></li>
+            }
+        </ul>
+    }
+
+    <div class="sb-section">Hệ thống</div>
+    <ul class="sb-nav">
+        <li><a asp-area="" asp-controller="Home"    asp-action="Index"  target="_blank"><i class="bi bi-globe2"></i> Xem trang web</a></li>
+        <li><a asp-area="" asp-controller="Account" asp-action="Logout"><i class="bi bi-box-arrow-right"></i> Đăng xuất</a></li>
+    </ul>
+
+    <div class="sb-footer">
+        <div class="sb-user">
+            <div class="sb-user-ava"><i class="bi bi-person-fill"></i></div>
+            <div>
+                <div class="sb-user-name">@(Context.Session.GetString("FullName") ?? "User")</div>
+                <div class="sb-user-role">@roleDisplayName (@userRole)</div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<div class="adm-main">
+    <!-- TOP BAR -->
+    <div class="adm-topbar">
+        <div>
+            <div class="tb-title">
+                <i class="bi bi-grid-3x3-gap" style="color:#006E4A;"></i>
+                @ViewData["Title"]
+            </div>
+            <div class="tb-sub">
+                BeautyShop · Vai trò: <strong>@roleDisplayName</strong>
+                @if (isAdmin)
+                {
+                    <span class="badge bg-dark ms-1">Phạm vi: Toàn hệ thống</span>
+                }
+                else if (allowedStores.Any())
+                {
+                    <span class="badge bg-success ms-1">Phạm vi Kho ID: @string.Join(", ", allowedStores)</span>
+                }
+            </div>
+        </div>
+        <div class="tb-right">
+            <a asp-area="" asp-controller="Home" asp-action="Index" class="tb-icon-btn" target="_blank" title="Xem trang web">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+            <div class="tb-user">
+                <div class="tb-ava"><i class="bi bi-person-fill"></i></div>
+                @(Context.Session.GetString("FullName") ?? "User")
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <main class="adm-page">
+        @RenderBody()
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/3d/shared.js" asp-append-version="true"></script>
+@if (isAdmin)
+{
+    <script src="~/js/3d/admin.js" asp-append-version="true"></script>
+}
+@if (isEmployee)
+{
+    <script src="~/js/3d/staff.js" asp-append-version="true"></script>
+}
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

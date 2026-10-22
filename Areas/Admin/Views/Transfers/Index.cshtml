@@ -1,0 +1,253 @@
+@model IEnumerable<BeautyShop.Models.StockTransfer>
+@{
+    ViewData["Title"] = "Quản lý Chuyển kho";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var stores = ViewBag.Stores as List<BeautyShop.Models.Store> ?? new();
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">🔄 Luân chuyển kho liên tỉnh</h2>
+        <p class="text-muted mb-0">Điều phối hàng hóa giữa các kho theo tuyến hợp lệ qua trạm trung chuyển Hub</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-action="TransitHub" class="btn btn-sm btn-outline-warning fw-bold px-3 py-2 rounded-3 shadow-sm bg-white text-dark">
+            <i class="bi bi-diagram-3-fill text-warning me-1"></i> Hàng chờ tại Hub (@(ViewBag.WaitingHubCount ?? 0))
+        </a>
+        <a asp-action="Routes" class="btn btn-sm btn-outline-secondary fw-bold px-3 py-2 rounded-3 shadow-sm bg-white">
+            <i class="bi bi-signpost-split me-1"></i> Danh mục tuyến
+        </a>
+        <a asp-action="Create" class="btn btn-sm btn-primary fw-bold px-3 py-2 rounded-3 shadow-sm">
+            <i class="bi bi-plus-circle-fill me-1"></i> Tạo phiếu chuyển
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>@TempData["SuccessMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>@TempData["ErrorMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- THỐNG KÊ NHANH -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-primary" style="background:#eff6ff;">
+                    <i class="bi bi-receipt fs-3"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Tổng số phiếu</div>
+                    <div class="fw-900 fs-3 text-dark">@(ViewBag.TotalTransfers ?? 0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-warning" style="background:#fffbeb;">
+                    <i class="bi bi-truck fs-3"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Đang trên đường</div>
+                    <div class="fw-900 fs-3 text-warning">@(ViewBag.InTransitCount ?? 0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-success" style="background:#f0fdf4;">
+                    <i class="bi bi-check2-circle fs-3"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Đã tiếp nhận</div>
+                    <div class="fw-900 fs-3 text-success">@(ViewBag.ReceivedCount ?? 0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-info" style="background:#f0f9ff;">
+                    <i class="bi bi-building fs-3"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Chờ tại Hub Đà Nẵng</div>
+                    <div class="fw-900 fs-3 text-info">@(ViewBag.WaitingHubCount ?? 0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BỘ LỌC TÌM KIẾM -->
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small fw-bold text-muted mb-1">Mã phiếu / Mã lô / Sản phẩm</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input type="text" name="keyword" class="form-control border-0 bg-light" placeholder="Nhập mã phiếu, mã lô..." value="@ViewBag.Keyword" />
+            </div>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">Kho gửi</label>
+            <select name="fromStoreId" class="form-select border-0 bg-light">
+                <option value="">-- Tất cả kho gửi --</option>
+                @foreach (var s in stores)
+                {
+                    <option value="@s.Id" selected="@(ViewBag.FromStoreId == s.Id)">@s.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">Kho nhận chặng</label>
+            <select name="toStoreId" class="form-select border-0 bg-light">
+                <option value="">-- Tất cả kho nhận --</option>
+                @foreach (var s in stores)
+                {
+                    <option value="@s.Id" selected="@(ViewBag.ToStoreId == s.Id)">@s.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">Trạng thái</label>
+            <select name="status" class="form-select border-0 bg-light">
+                <option value="">-- Tất cả --</option>
+                <option value="InTransit" selected="@(ViewBag.Status == "InTransit")">Đang chuyển</option>
+                <option value="Received" selected="@(ViewBag.Status == "Received")">Đã nhận</option>
+                <option value="Cancelled" selected="@(ViewBag.Status == "Cancelled")">Đã hủy</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary w-100 fw-bold">
+                <i class="bi bi-funnel-fill me-1"></i> Lọc
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- BẢNG DANH SÁCH PHIẾU CHUYỂN KHO -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4 text-secondary text-uppercase small fw-bold" style="width:140px;">Mã phiếu</th>
+                    <th class="text-secondary text-uppercase small fw-bold" style="width:150px;">Mã lô / Chặng</th>
+                    <th class="text-secondary text-uppercase small fw-bold">Kho gửi</th>
+                    <th class="text-secondary text-uppercase small fw-bold text-center" style="width:50px;"><i class="bi bi-arrow-right"></i></th>
+                    <th class="text-secondary text-uppercase small fw-bold">Kho nhận chặng</th>
+                    <th class="text-secondary text-uppercase small fw-bold">Đích cuối</th>
+                    <th class="text-secondary text-uppercase small fw-bold text-center" style="width:100px;">Số lượng</th>
+                    <th class="text-secondary text-uppercase small fw-bold text-center" style="width:130px;">Trạng thái</th>
+                    <th class="text-secondary text-uppercase small fw-bold">Ngày tạo</th>
+                    <th class="pe-4 text-secondary text-uppercase small fw-bold text-end" style="width:120px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var item in Model)
+                    {
+                        int totalQty = item.Lines?.Sum(l => l.Quantity) ?? 0;
+                        <tr>
+                            <td class="ps-4">
+                                <a asp-action="Detail" asp-route-id="@item.Id" class="fw-bold text-primary text-decoration-none">
+                                    @item.TransferCode
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border font-monospace">@item.BatchCode</span>
+                                <span class="badge bg-secondary-subtle text-secondary small ms-1">Chặng @item.LegIndex</span>
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark">@item.FromStore?.Name</div>
+                                <small class="text-muted">@item.FromStore?.ProvinceName</small>
+                            </td>
+                            <td class="text-center text-muted">
+                                <i class="bi bi-arrow-right fs-5 text-primary"></i>
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark">@item.ToStore?.Name</div>
+                                @if (item.ToStoreId == 5)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning small">🏢 Trạm Hub</span>
+                                }
+                                else
+                                {
+                                    <small class="text-muted">@item.ToStore?.ProvinceName</small>
+                                }
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark">@item.FinalDestinationStore?.Name</div>
+                                <small class="text-muted">@item.FinalDestinationStore?.ProvinceName</small>
+                            </td>
+                            <td class="text-center fw-bold text-primary fs-6">
+                                @totalQty
+                            </td>
+                            <td class="text-center">
+                                @if (item.Status == "InTransit")
+                                {
+                                    <span class="badge bg-warning-subtle text-warning px-3 py-2 rounded-pill fw-bold border border-warning-subtle">
+                                        <i class="bi bi-truck me-1"></i> Đang chuyển
+                                    </span>
+                                }
+                                else if (item.Status == "Received")
+                                {
+                                    <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold border border-success-subtle">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Đã nhận
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-pill fw-bold border">
+                                        <i class="bi bi-x-circle me-1"></i> Đã hủy
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                <div class="small fw-semibold text-dark">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                                <small class="text-muted">Bởi: @item.CreatedByName</small>
+                            </td>
+                            <td class="pe-4 text-end">
+                                <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary fw-bold rounded-3">
+                                    <i class="bi bi-eye me-1"></i> Chi tiết
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                            <i class="bi bi-box-seam fs-1 d-block mb-2 text-secondary"></i>
+                            Chưa có phiếu chuyển kho nào phù hợp.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
