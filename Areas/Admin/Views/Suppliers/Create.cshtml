@@ -1,0 +1,113 @@
+@model BeautyShop.Models.Supplier
+@{
+    ViewData["Title"] = "Thêm nhà cung cấp mới";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h4 class="fw-800 text-dark mb-1">🏢 Thêm nhà cung cấp mới</h4>
+                        <p class="text-muted small mb-0">Lưu trữ thông tin đối tác cung ứng hàng hóa cho chuỗi cửa hàng</p>
+                    </div>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-3">
+                        <i class="bi bi-arrow-left me-1"></i> Quay lại
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3 mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label fw-bold text-secondary small">Tên nhà cung cấp / Công ty <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control py-2 shadow-sm" placeholder="Ví dụ: Công ty TNHH L'Oréal Việt Nam, NPP Hasaki..." required />
+                        <span asp-validation-for="Name" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="ContactPerson" class="form-label fw-bold text-secondary small">Người đại diện liên hệ</label>
+                            <input asp-for="ContactPerson" class="form-control py-2 shadow-sm" placeholder="Họ tên người phụ trách đơn hàng..." />
+                            <span asp-validation-for="ContactPerson" class="text-danger small mt-1 d-block"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Phone" class="form-label fw-bold text-secondary small">Số điện thoại liên hệ</label>
+                            <input asp-for="Phone" class="form-control py-2 shadow-sm" placeholder="Hotline hoặc SĐT kinh doanh..." />
+                            <span asp-validation-for="Phone" class="text-danger small mt-1 d-block"></span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="form-label fw-bold text-secondary small">Email liên hệ</label>
+                            <input asp-for="Email" class="form-control py-2 shadow-sm" placeholder="contact@supplier.com..." />
+                            <span asp-validation-for="Email" class="text-danger small mt-1 d-block"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="TaxCode" class="form-label fw-bold text-secondary small">Mã số thuế doanh nghiệp</label>
+                            <input asp-for="TaxCode" class="form-control py-2 shadow-sm" placeholder="Mã số thuế phục vụ hóa đơn..." />
+                            <span asp-validation-for="TaxCode" class="text-danger small mt-1 d-block"></span>
+                        </div>
+                    </div>
+
+                    <!-- ĐỊA CHỈ PHẢN HỒI KHI HÀNG LỖI (YÊU CẦU 2) -->
+                    <div class="mb-3">
+                        <label asp-for="Address" class="form-label fw-bold text-secondary small">
+                            Địa chỉ nhà cung cấp <span class="text-danger">*</span>
+                        </label>
+                        <div class="alert alert-info py-2 small mb-2 d-flex align-items-center gap-2">
+                            <i class="bi bi-info-circle-fill fs-6 text-primary"></i>
+                            <div><strong>Bắt buộc:</strong> Cần lưu địa chỉ chính xác để gửi phản hồi, yêu cầu kiểm định và vận chuyển đổi trả khi hàng bị lỗi, vỡ hỏng hoặc sai quy cách.</div>
+                        </div>
+                        <textarea asp-for="Address" class="form-control shadow-sm" rows="3"
+                                  placeholder="Nhập địa chỉ trụ sở hoặc kho hàng của nhà cung cấp (Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố)..." required></textarea>
+                        <span asp-validation-for="Address" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="Country" class="form-label fw-bold text-secondary small">Quốc gia xuất xứ hàng hóa <span class="text-danger">*</span></label>
+                            <select asp-for="Country" class="form-select py-2 shadow-sm" required>
+                                <option value="Việt Nam">Việt Nam (Hàng nội địa)</option>
+                                <option value="Hàn Quốc">Hàn Quốc (Nhập khẩu)</option>
+                                <option value="Pháp">Pháp (Nhập khẩu)</option>
+                                <option value="Nhật Bản">Nhật Bản (Nhập khẩu)</option>
+                                <option value="Mỹ">Mỹ (Nhập khẩu)</option>
+                                <option value="Anh">Anh (Nhập khẩu)</option>
+                                <option value="Đức">Đức (Nhập khẩu)</option>
+                                <option value="Thái Lan">Thái Lan (Nhập khẩu)</option>
+                                <option value="Khác">Quốc gia khác</option>
+                            </select>
+                            <span asp-validation-for="Country" class="text-danger small mt-1 d-block"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary small d-block">Trạng thái hợp tác</label>
+                            <div class="form-check form-switch pt-2">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveSwitch" checked />
+                                <label class="form-check-label fw-semibold" for="isActiveSwitch">Đang kích hoạt hợp tác</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Note" class="form-label fw-bold text-secondary small">Ghi chú điều khoản hợp tác</label>
+                        <textarea asp-for="Note" class="form-control shadow-sm" rows="2"
+                                  placeholder="Chính sách chiết khấu, hạn mức công nợ, quy định đổi trả..."></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                        <a asp-action="Index" class="btn btn-light fw-bold rounded-3 px-4">Hủy</a>
+                        <button type="submit" class="btn btn-primary fw-bold rounded-3 px-4 shadow-sm">
+                            <i class="bi bi-check-circle-fill me-1"></i> Lưu nhà cung cấp
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

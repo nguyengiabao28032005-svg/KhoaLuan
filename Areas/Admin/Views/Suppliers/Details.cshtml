@@ -1,0 +1,355 @@
+@model BeautyShop.Models.Supplier
+@{
+    ViewData["Title"] = "Chi tiết nhà cung cấp " + Model.Name;
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var availableProducts = ViewBag.AvailableProducts as List<BeautyShop.Models.Product> ?? new();
+    decimal totalImported = Model.Receipts.Sum(r => r.TotalAmount > 0 ? r.TotalAmount : r.Quantity * r.ImportPrice);
+    decimal totalPaid = Model.Receipts.Sum(r => r.PaidAmount > 0 ? r.PaidAmount : (r.PaymentStatus == "Paid" ? (r.TotalAmount > 0 ? r.TotalAmount : r.Quantity * r.ImportPrice) : 0));
+    decimal totalDebt = Model.Receipts.Sum(r => r.DebtAmount);
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-circle" style="width:32px;height:32px;padding:0;line-height:30px;text-align:center;">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h2 class="fw-800 mb-0" style="color:#1a1a2e;">@Model.Name</h2>
+            @if (Model.IsActive)
+            {
+                <span class="badge rounded-pill px-3 py-1" style="background:#dcfce7; color:#15803d;">Đang hợp tác</span>
+            }
+            else
+            {
+                <span class="badge rounded-pill px-3 py-1 bg-secondary text-white">Tạm ngưng</span>
+            }
+        </div>
+        <p class="text-muted mb-0">Hồ sơ đối tác, danh mục sản phẩm cung ứng và lịch sử công nợ</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm fw-bold px-3 py-2 rounded-3 shadow-sm">
+            <i class="bi bi-pencil me-1"></i> Sửa thông tin
+        </a>
+        <a asp-area="Admin" asp-controller="Inventory" asp-action="Receipts" asp-route-supplierId="@Model.Id" class="btn btn-primary btn-sm fw-bold px-3 py-2 rounded-3 shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Nhập hàng từ NCC này
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- THÔNG TIN HỒ SƠ & TÀI CHÍNH CÔNG NỢ -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-4 h-100 p-4 bg-white">
+            <h5 class="fw-700 text-dark mb-3"><i class="bi bi-building-fill text-primary me-2"></i>Hồ sơ nhà cung cấp</h5>
+            
+            <div class="mb-3">
+                <div class="text-muted small fw-bold text-uppercase">Địa chỉ liên hệ &amp; Phản hồi hàng lỗi</div>
+                <div class="fw-semibold text-dark mt-1 p-2 rounded-3" style="background:#f8fafc; border-left: 4px solid #ef4444;">
+                    <i class="bi bi-geo-alt-fill text-danger me-1"></i>@Model.Address
+                </div>
+                <small class="text-muted fst-italic mt-1 d-block">Địa chỉ gửi thông báo kiểm định và vận chuyển đổi trả khi hàng lỗi.</small>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <div class="text-muted small fw-bold text-uppercase">Quốc gia xuất xứ</div>
+                    <div class="fw-bold fs-6 mt-1 text-dark"><i class="bi bi-globe me-1 text-primary"></i>@Model.Country</div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small fw-bold text-uppercase">Mã số thuế</div>
+                    <div class="fw-bold fs-6 mt-1 font-monospace">@(Model.TaxCode ?? "—")</div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <div class="text-muted small fw-bold text-uppercase">Người đại diện</div>
+                    <div class="fw-semibold mt-1">@(Model.ContactPerson ?? "—")</div>
+                </div>
+                <div class="col-6">
+                    <div class="text-muted small fw-bold text-uppercase">Hotline / SĐT</div>
+                    <div class="fw-semibold mt-1 text-primary">@(Model.Phone ?? "—")</div>
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <div class="text-muted small fw-bold text-uppercase">Email</div>
+                <div class="fw-semibold mt-1">@(Model.Email ?? "—")</div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.Note))
+            {
+                <div class="mt-3 pt-3 border-top">
+                    <div class="text-muted small fw-bold text-uppercase">Ghi chú điều khoản</div>
+                    <div class="small text-secondary mt-1">@Model.Note</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="text-muted small fw-bold text-uppercase">Tổng tiền nhập hàng</div>
+                    <div class="fw-900 fs-4 text-dark mt-1">@totalImported.ToString("N0") <span class="fs-6 fw-normal text-muted">đ</span></div>
+                    <small class="text-muted mt-1 d-block">@Model.Receipts.Count đơn nhập hàng</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="text-muted small fw-bold text-uppercase">Đã thanh toán</div>
+                    <div class="fw-900 fs-4 text-success mt-1">@totalPaid.ToString("N0") <span class="fs-6 fw-normal text-muted">đ</span></div>
+                    <small class="text-success mt-1 d-block"><i class="bi bi-check-circle me-1"></i>Đã đối soát kế toán</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="text-muted small fw-bold text-uppercase">Công nợ hiện tại</div>
+                    <div class="fw-900 fs-4 text-danger mt-1">@totalDebt.ToString("N0") <span class="fs-6 fw-normal text-muted">đ</span></div>
+                    <small class="text-danger mt-1 d-block">@(totalDebt > 0 ? "Chưa thanh toán hết" : "Đã hết nợ")</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- BẢNG CUNG ỨNG (YÊU CẦU 3) -->
+        <div class="card border-0 shadow-sm rounded-4 bg-white">
+            <div class="card-header bg-white border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="fw-700 mb-0">📦 Bảng cung ứng sản phẩm (Yêu cầu 3)</h5>
+                    <small class="text-muted">Các sản phẩm do nhà cung cấp này phân phối. Khi chọn NCC trên phiếu nhập, hệ thống sẽ lọc đúng các sản phẩm này.</small>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-3" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                    <i class="bi bi-plus-lg me-1"></i> Thêm sản phẩm
+                </button>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.SupplierProducts.Any())
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-box2 text-muted" style="font-size:2.5rem;"></i>
+                        <p class="mt-2 mb-2 small">Chưa gán sản phẩm nào cho nhà cung cấp này trong bảng cung ứng.</p>
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                            Gán sản phẩm đầu tiên
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="px-4 py-2 small">Sản phẩm</th>
+                                    <th class="py-2 small">Ngành hàng / Thương hiệu</th>
+                                    <th class="py-2 small text-end">Giá cung ứng tham chiếu</th>
+                                    <th class="py-2 px-4 text-end small">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sp in Model.SupplierProducts)
+                                {
+                                    <tr>
+                                        <td class="px-4 py-2">
+                                            <div class="fw-bold text-dark">@sp.Product?.Name</div>
+                                            @if (!string.IsNullOrEmpty(sp.Notes))
+                                            {
+                                                <small class="text-muted fst-italic">@sp.Notes</small>
+                                            }
+                                        </td>
+                                        <td class="py-2">
+                                            <span class="badge bg-light text-secondary border">@(sp.Product?.Category?.Name ?? "—")</span>
+                                            <span class="badge bg-light text-primary border ms-1">@(sp.Product?.Brand?.Name ?? "—")</span>
+                                        </td>
+                                        <td class="py-2 text-end fw-bold text-dark">
+                                            @(sp.SuppliedPrice.HasValue ? sp.SuppliedPrice.Value.ToString("N0") + " đ" : "—")
+                                        </td>
+                                        <td class="py-2 px-4 text-end">
+                                            <form asp-action="RemoveProduct" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa sản phẩm này khỏi bảng cung ứng của NCC?');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@sp.Id" />
+                                                <input type="hidden" name="supplierId" value="@Model.Id" />
+                                                <button type="submit" class="btn btn-link text-danger p-0 border-0" title="Xóa khỏi bảng cung ứng">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LỊCH SỬ CÁC ĐƠN NHẬP TỪ NCC NÀY (YÊU CẦU 8: ĐỐI CHIẾU TRÁNH NHẬP TRÙNG & SO SÁNH GIÁ) -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
+        <div>
+            <h5 class="fw-700 mb-0">📜 Lịch sử các phiếu nhập từ @Model.Name</h5>
+            <small class="text-muted">Đối chiếu các đơn nhập trước để tránh nhập trùng và so sánh biến động đơn giá nhập (Yêu cầu 8)</small>
+        </div>
+        <span class="badge bg-primary-subtle text-primary fw-bold font-monospace">@Model.Receipts.Count phiếu nhập</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Receipts.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-receipt-cutoff" style="font-size:3rem;"></i>
+                <p class="mt-2 mb-0">Chưa có phiếu nhập hàng nào từ nhà cung cấp này.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background:#f8fafc;">
+                        <tr>
+                            <th class="px-4 py-3">Mã phiếu</th>
+                            <th class="py-3">Ngày nhập</th>
+                            <th class="py-3">Kho tiếp nhận</th>
+                            <th class="py-3">Mặt hàng đã nhập</th>
+                            <th class="py-3 text-end">Tổng tiền hàng</th>
+                            <th class="py-3 text-end">Đã thanh toán</th>
+                            <th class="py-3 text-end">Công nợ còn lại</th>
+                            <th class="py-3 text-center">Trạng thái</th>
+                            <th class="py-3 px-4 text-end">Chi tiết</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Receipts.OrderByDescending(r => r.ImportDate))
+                        {
+                            decimal totalAmt = r.TotalAmount > 0 ? r.TotalAmount : r.Quantity * r.ImportPrice;
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <span class="badge bg-primary-subtle text-primary font-monospace fw-bold px-2 py-1">
+                                        @r.ReceiptCode
+                                    </span>
+                                </td>
+                                <td class="py-3 small text-muted">
+                                    <i class="bi bi-calendar3 me-1"></i>@r.ImportDate.ToString("dd/MM/yyyy HH:mm")
+                                </td>
+                                <td class="py-3">
+                                    <span class="fw-bold text-dark">@(r.Store?.Name ?? "Kho chính")</span>
+                                </td>
+                                <td class="py-3">
+                                    @if (r.Items.Any())
+                                    {
+                                        <div class="small fw-semibold text-dark">@r.Items.Count mặt hàng:</div>
+                                        <div class="small text-muted text-truncate" style="max-width: 280px;">
+                                            @string.Join(", ", r.Items.Select(i => $"{i.Variant?.Product?.Name} ({i.Quantity} sp)"))
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="small fw-semibold text-dark">@r.Variant?.Product?.Name</div>
+                                        <div class="small text-muted">Số lượng: @r.Quantity sp (Giá nhập: @r.ImportPrice.ToString("N0")đ)</div>
+                                    }
+                                </td>
+                                <td class="py-3 text-end fw-bold text-dark">
+                                    @totalAmt.ToString("N0") đ
+                                </td>
+                                <td class="py-3 text-end fw-bold text-success">
+                                    @r.PaidAmount.ToString("N0") đ
+                                </td>
+                                <td class="py-3 text-end fw-bold text-danger">
+                                    @(r.DebtAmount > 0 ? r.DebtAmount.ToString("N0") + " đ" : "0 đ")
+                                </td>
+                                <td class="py-3 text-center">
+                                    @if (r.PaymentStatus == "Paid")
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#dcfce7; color:#15803d;">
+                                            Đã thanh toán
+                                        </span>
+                                    }
+                                    else if (r.PaymentStatus == "Unpaid")
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#fee2e2; color:#b91c1c;">
+                                            Chưa trả (Nợ)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#fef3c7; color:#b45309;">
+                                            Trả một phần
+                                        </span>
+                                    }
+                                </td>
+                                <td class="py-3 px-4 text-end">
+                                    <a asp-area="Admin" asp-controller="Inventory" asp-action="Receipts" asp-route-keyword="@r.ReceiptCode" class="btn btn-sm btn-outline-secondary rounded-3">
+                                        <i class="bi bi-eye"></i> Xem
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- MODAL GÁN SẢN PHẨM VÀO BẢNG CUNG ỨNG (YÊU CẦU 3) -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-light rounded-top-4 pb-3">
+                <h5 class="modal-title fw-800 text-dark">
+                    <i class="bi bi-link-45deg text-primary me-2"></i>Thêm sản phẩm vào bảng cung ứng
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="AddProduct" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="supplierId" value="@Model.Id" />
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">
+                        Gán sản phẩm mà nhà cung cấp <strong>@Model.Name</strong> có khả năng cung ứng.
+                    </p>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Chọn sản phẩm <span class="text-danger">*</span></label>
+                        <select name="productId" class="form-select py-2 shadow-sm" required>
+                            <option value="">-- Chọn sản phẩm cần gán --</option>
+                            @foreach (var p in availableProducts)
+                            {
+                                <option value="@p.Id">[@(p.Category?.Name ?? "Chung")] @p.Name - @(p.Brand?.Name ?? "")</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Giá cung ứng tham chiếu (VNĐ)</label>
+                        <div class="input-group shadow-sm">
+                            <input type="number" name="suppliedPrice" class="form-control py-2 text-end" min="0" step="1000" placeholder="Đơn giá cung ứng thỏa thuận..." />
+                            <span class="input-group-text bg-white text-muted">đ</span>
+                        </div>
+                        <small class="text-muted">Giá dùng để hệ thống gợi ý và so sánh giá khi lập phiếu nhập (Yêu cầu 9).</small>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-secondary">Ghi chú cung ứng</label>
+                        <input type="text" name="notes" class="form-control py-2 shadow-sm" placeholder="Hạn mức chiết khấu, thời gian giao hàng cam kết..." />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold rounded-3" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary fw-bold rounded-3 px-4 shadow-sm">
+                        <i class="bi bi-plus-circle me-1"></i> Thêm vào bảng cung ứng
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

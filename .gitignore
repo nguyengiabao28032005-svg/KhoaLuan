@@ -1,0 +1,24 @@
+## Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+TestResults/
+bin/TestRun/
+
+## Visual Studio / IDE
+.vs/
+.vscode/
+*.user
+*.userprefs
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Sensitive config
+appsettings.Development.json
+
+## OS Files
+.DS_Store
+Thumbs.db
+desktop.ini

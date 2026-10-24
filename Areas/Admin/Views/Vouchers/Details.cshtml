@@ -1,0 +1,222 @@
+@model BeautyShop.Models.Voucher
+
+@{
+    ViewData["Title"] = "Chi tiết Voucher: " + Model.Code;
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var now = DateTime.Now;
+
+    string statusText = "Đang chạy";
+    string badgeClass = "badge bg-success";
+
+    if (!Model.IsActive)
+    {
+        statusText = "Đã tắt";
+        badgeClass = "badge bg-secondary";
+    }
+    else if (now < Model.StartDate)
+    {
+        statusText = "Sắp diễn ra";
+        badgeClass = "badge bg-info text-dark";
+    }
+    else if (now > Model.EndDate)
+    {
+        statusText = "Hết hạn";
+        badgeClass = "badge bg-danger";
+    }
+    else if (Model.TotalUsageLimit.HasValue && Model.UsedCount >= Model.TotalUsageLimit.Value)
+    {
+        statusText = "Hết lượt";
+        badgeClass = "badge bg-warning text-dark";
+    }
+
+    int remaining = Model.TotalUsageLimit.HasValue ? Math.Max(0, Model.TotalUsageLimit.Value - Model.UsedCount) : -1;
+}
+
+<div class="adm-page">
+    <div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a asp-action="Index" class="text-decoration-none">Quản lý Voucher</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Chi tiết</li>
+                </ol>
+            </nav>
+            <h4 class="fw-bold text-dark mb-0">
+                <i class="bi bi-ticket-detailed-fill text-info me-2"></i>Chi Tiết Mã: <span class="font-monospace text-primary">@Model.Code</span>
+            </h4>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary fw-bold">
+                <i class="bi bi-pencil me-1"></i> Chỉnh sửa
+            </a>
+            <a asp-action="ToggleStatus" asp-route-id="@Model.Id" class="btn @(Model.IsActive ? "btn-outline-warning" : "btn-outline-success") fw-bold">
+                <i class="bi @(Model.IsActive ? "bi-toggle-on" : "bi-toggle-off") me-1"></i> @(Model.IsActive ? "Tắt mã" : "Kích hoạt")
+            </a>
+            <a asp-action="Index" class="btn btn-secondary fw-bold">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại
+            </a>
+        </div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="admin-card p-3 text-center">
+                <span class="text-muted small fw-bold text-uppercase">Trạng thái</span>
+                <div class="mt-2"><span class="@badgeClass fs-6 px-3 py-1">@statusText</span></div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-3 text-center">
+                <span class="text-muted small fw-bold text-uppercase">Đã sử dụng</span>
+                <h3 class="fw-bold text-dark mt-1 mb-0">@Model.UsedCount <small class="fs-6 text-muted">/ @(Model.TotalUsageLimit.HasValue ? Model.TotalUsageLimit.Value.ToString() : "∞")</small></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-3 text-center">
+                <span class="text-muted small fw-bold text-uppercase">Số lượt còn lại</span>
+                <h3 class="fw-bold text-success mt-1 mb-0">@(remaining >= 0 ? remaining.ToString() : "Không giới hạn")</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-3 text-center">
+                <span class="text-muted small fw-bold text-uppercase">Khách hàng đã lưu</span>
+                <h3 class="fw-bold text-primary mt-1 mb-0">@(Model.UserVouchers?.Count ?? 0)</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- CỘT TRÁI: THÔNG TIN CHI TIẾT VOUCHER -->
+        <div class="col-lg-6">
+            <div class="admin-card h-100">
+                <div class="admin-card-header">
+                    <h5><i class="bi bi-info-circle text-primary"></i> Thông Tin Chương Trình</h5>
+                </div>
+                <div class="admin-card-body">
+                    <table class="table table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <th style="width: 170px;" class="text-muted">Tên voucher:</th>
+                                <td class="fw-bold text-dark">@Model.Name</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Mã nhập voucher:</th>
+                                <td>
+                                    <span class="badge bg-primary font-monospace fs-6 px-3 py-1">@Model.Code</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Loại khuyến mãi:</th>
+                                <td>
+                                    @if (Model.DiscountType == "Percent")
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger fw-bold border">Giảm theo phần trăm (%)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success fw-bold border">Giảm tiền mặt (VNĐ)</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Giá trị giảm:</th>
+                                <td class="fw-bold text-danger fs-5">
+                                    @(Model.DiscountType == "Percent" ? $"{Model.DiscountValue:G29}%" : $"{Model.DiscountValue:N0}đ")
+                                </td>
+                            </tr>
+                            @if (Model.DiscountType == "Percent" && Model.MaxDiscountAmount.HasValue && Model.MaxDiscountAmount > 0)
+                            {
+                                <tr>
+                                    <th class="text-muted">Mức giảm tối đa:</th>
+                                    <td class="fw-semibold">@Model.MaxDiscountAmount.Value.ToString("N0")đ</td>
+                                </tr>
+                            }
+                            <tr>
+                                <th class="text-muted">Đơn tối thiểu:</th>
+                                <td class="fw-semibold">@(Model.MinOrderValue > 0 ? $"{Model.MinOrderValue:N0}đ" : "Không giới hạn")</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Phạm vi áp dụng:</th>
+                                <td>@(Model.Scope == "All" ? "Toàn bộ sản phẩm trong shop" : "Một số sản phẩm được chọn")</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Số lần dùng/khách:</th>
+                                <td>Tối đa <strong>@Model.MaxUsesPerUser</strong> lần</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted">Thời gian hiệu lực:</th>
+                                <td>
+                                    <div><strong>Bắt đầu:</strong> @Model.StartDate.ToString("dd/MM/yyyy HH:mm")</div>
+                                    <div><strong>Kết thúc:</strong> @Model.EndDate.ToString("dd/MM/yyyy HH:mm")</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- CỘT PHẢI: DANH SÁCH KHÁCH HÀNG ĐÃ LƯU / DÙNG VOUCHER -->
+        <div class="col-lg-6">
+            <div class="admin-card h-100">
+                <div class="admin-card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="bi bi-people text-success"></i> Khách Hàng Đã Lưu / Sử Dụng</h5>
+                    <span class="badge bg-light text-dark border">@(Model.UserVouchers?.Count ?? 0) lượt</span>
+                </div>
+                <div class="admin-card-body p-0">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table admin-table mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th class="ps-3">Khách hàng</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thời điểm</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.UserVouchers != null && Model.UserVouchers.Any())
+                                {
+                                    foreach (var uv in Model.UserVouchers.OrderByDescending(x => x.Id))
+                                    {
+                                        <tr>
+                                            <td class="ps-3">
+                                                <div class="fw-bold text-dark">@(uv.User?.FullName ?? $"User #{uv.UserId}")</div>
+                                                <small class="text-muted">@(uv.User?.Email ?? "")</small>
+                                            </td>
+                                            <td>
+                                                @if (uv.IsUsed)
+                                                {
+                                                    <span class="badge bg-success">Đã dùng</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-info text-dark">Đã lưu trong ví</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    @(uv.IsUsed && uv.UsedAt.HasValue
+                                                        ? uv.UsedAt.Value.ToString("dd/MM/yyyy HH:mm")
+                                                        : uv.CreatedAt.ToString("dd/MM/yyyy HH:mm"))
+                                                </small>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="3" class="text-center py-4 text-muted small">
+                                            Chưa có khách hàng nào lưu hoặc sử dụng mã này.
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

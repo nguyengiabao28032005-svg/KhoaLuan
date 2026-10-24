@@ -1,0 +1,133 @@
+@model IEnumerable<BeautyShop.Models.Order>
+
+@{
+    ViewData["Title"] = "Quản lý đơn hàng";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid px-4 py-4">
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark mb-1">Quản Lý Đơn Hàng</h3>
+        <p class="text-muted small mb-0">Theo dõi, duyệt đơn và cập nhật trạng thái vận chuyển, thanh toán</p>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card-body p-3">
+            <form method="get" asp-action="Index" class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" name="searchCode" value="@ViewBag.CurrentSearchCode" class="form-control border-start-0 ps-0" placeholder="Tìm theo mã đơn hàng..." />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    @{
+                        var currentStatus = (string)ViewBag.CurrentStatus;
+                    }
+                    <select name="status" class="form-select text-muted">
+                        <option value="">-- Tất cả trạng thái đơn --</option>
+                        @foreach (var s in new[] {
+                            new { Val = "Pending", Text = "Pending (Chờ duyệt)" },
+                            new { Val = "Confirmed", Text = "Confirmed (Đã xác nhận)" },
+                            new { Val = "Shipping", Text = "Shipping (Đang giao)" },
+                            new { Val = "Completed", Text = "Completed (Thành công)" },
+                            new { Val = "Cancelled", Text = "Cancelled (Đã hủy)" }
+                        })
+                        {
+                            if (currentStatus == s.Val)
+                            {
+                                <option value="@s.Val" selected>@s.Text</option>
+                            }
+                            else
+                            {
+                                <option value="@s.Val">@s.Text</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100 fw-semibold">Lọc đơn</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-secondary text-uppercase small font-weight-bold">
+                        <tr>
+                            <th class="ps-4">Mã đơn hàng</th>
+                            <th>Khách hàng</th>
+                            <th>Ngày đặt</th>
+                            <th class="text-end">Tổng tiền</th>
+                            <th class="text-center">Thanh toán</th>
+                            <th class="text-center">Trạng thái đơn</th>
+                            <th class="text-end pe-4">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td class="ps-4"><span class="fw-bold text-primary">@item.OrderCode</span></td>
+                                    <td>
+                                        <div class="fw-semibold text-dark">@item.CustomerName</div>
+                                        <small class="text-muted">@item.PhoneNumber</small>
+                                    </td>
+                                    <td><span class="text-secondary small">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></td>
+                                    <td class="text-end fw-bold text-danger">@item.FinalAmount.ToString("N0") đ</td>
+                                    <td class="text-center">
+                                        @if (item.PaymentStatus == "Paid")
+                                        {
+                                            <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1">Đã thanh toán</span>
+                                        }
+                                        else if (item.PaymentStatus == "Awaiting Payment")
+                                        {
+                                            <span class="badge bg-warning-subtle text-warning rounded-pill px-2 py-1">Chờ QR</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1">Chưa trả (COD)</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @switch (item.OrderStatus)
+                                        {
+                                            case "Pending":
+                                                <span class="badge bg-info text-white rounded-2 px-2.5 py-1">Chờ duyệt</span>
+                                                break;
+                                            case "Confirmed":
+                                                <span class="badge bg-primary text-white rounded-2 px-2.5 py-1">Đã xác nhận</span>
+                                                break;
+                                            case "Shipping":
+                                                <span class="badge bg-warning text-dark rounded-2 px-2.5 py-1">Đang giao</span>
+                                                break;
+                                            case "Completed":
+                                                <span class="badge bg-success text-white rounded-2 px-2.5 py-1">Thành công</span>
+                                                break;
+                                            case "Cancelled":
+                                                <span class="badge bg-danger text-white rounded-2 px-2.5 py-1">Đã hủy</span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-secondary text-white rounded-2 px-2.5 py-1">@item.OrderStatus</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary rounded-2 px-3 fw-medium">
+                                            <i class="bi bi-eye me-1"></i> Chi tiết
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

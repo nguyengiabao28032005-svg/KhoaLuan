@@ -1,0 +1,247 @@
+@model IEnumerable<BeautyShop.Models.Supplier>
+@{
+    ViewData["Title"] = "Quản lý nhà cung cấp";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var countries = ViewBag.Countries as List<string> ?? new();
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">🏢 Quản lý Nhà cung cấp & Cung ứng</h2>
+        <p class="text-muted mb-0">Lưu trữ thông tin chi tiết nhà cung cấp, địa chỉ gửi phản hồi khi hàng lỗi và quản lý bảng cung ứng sản phẩm.</p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <a asp-area="Admin" asp-controller="Inventory" asp-action="Receipts" class="btn btn-sm btn-outline-secondary fw-bold px-3 py-2 bg-white rounded-3 shadow-sm">
+            <i class="bi bi-receipt me-1"></i> Bảng nhập kho
+        </a>
+        <a asp-action="Create" class="btn btn-sm btn-primary fw-bold px-3 py-2 rounded-3 shadow-sm">
+            <i class="bi bi-plus-circle-fill me-1"></i> Thêm nhà cung cấp mới
+        </a>
+    </div>
+</div>
+
+<!-- THỐNG KÊ NHANH -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-primary" style="background:#eff6ff;">
+                    <i class="bi bi-building" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Tổng số nhà cung cấp</div>
+                    <div class="fw-900 fs-3 text-dark">@(ViewBag.TotalSuppliers ?? 0) <span class="fs-6 fw-normal text-muted">đối tác</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-success" style="background:#f0fdf4;">
+                    <i class="bi bi-check-circle-fill" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Đang hoạt động</div>
+                    <div class="fw-900 fs-3 text-success">@(ViewBag.ActiveSuppliers ?? 0) <span class="fs-6 fw-normal text-muted">đối tác</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-danger" style="background:#fef2f2;">
+                    <i class="bi bi-cash-coin" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Tổng công nợ cần thanh toán</div>
+                    <div class="fw-900 fs-3 text-danger">@(((decimal)(ViewBag.TotalDebt ?? 0)).ToString("N0")) <span class="fs-6 fw-normal text-muted">đ</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BỘ LỌC TÌM KIẾM -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="Index" class="row g-3 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="keyword" value="@ViewBag.Keyword"
+                           class="form-control border-start-0 ps-0"
+                           placeholder="Tên NCC, người liên hệ, số điện thoại, địa chỉ, mã số thuế..." />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="country" class="form-select">
+                    <option value="">-- Tất cả quốc gia --</option>
+                    @foreach (var c in countries)
+                    {
+                        <option value="@c" selected="@(ViewBag.Country == c)">@c</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="isActive" class="form-select">
+                    <option value="">-- Trạng thái --</option>
+                    <option value="true" selected="@(ViewBag.IsActive == true)">Đang hoạt động</option>
+                    <option value="false" selected="@(ViewBag.IsActive == false)">Tạm ngưng</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn w-100 fw-700 rounded-3 text-white" style="background:#006E4A;">
+                    <i class="bi bi-funnel-fill me-1"></i> Lọc
+                </button>
+                @if (!string.IsNullOrEmpty((string)ViewBag.Keyword) || !string.IsNullOrEmpty((string)ViewBag.Country) || ViewBag.IsActive != null)
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary rounded-3" title="Xóa bộ lọc">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- DANH SÁCH NHÀ CUNG CẤP -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
+        <div>
+            <h5 class="fw-700 mb-0">📋 Danh sách đối tác nhà cung cấp</h5>
+            <small class="text-muted">Lưu đầy đủ địa chỉ để thuận tiện gửi phản hồi / khiếu nại và đổi trả khi hàng lỗi</small>
+        </div>
+        <span class="text-muted small">Hiển thị <strong>@Model.Count()</strong> nhà cung cấp</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-building-slash" style="font-size:3.5rem;"></i>
+                <p class="mt-2 mb-3">Chưa tìm thấy nhà cung cấp nào phù hợp.</p>
+                <a asp-action="Create" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                    <i class="bi bi-plus-circle me-1"></i> Thêm nhà cung cấp đầu tiên
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background:#f8fafc;">
+                        <tr>
+                            <th class="px-4 py-3">Nhà cung cấp</th>
+                            <th class="py-3">Đại diện & Liên hệ</th>
+                            <th class="py-3" style="max-width: 320px;">Địa chỉ phản hồi hàng lỗi</th>
+                            <th class="py-3 text-center">SP Cung ứng</th>
+                            <th class="py-3 text-end">Công nợ hiện tại</th>
+                            <th class="py-3 text-center">Trạng thái</th>
+                            <th class="py-3 px-4 text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model)
+                        {
+                            decimal totalDebt = s.Receipts.Sum(r => r.DebtAmount);
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <div class="fw-bold text-dark fs-6">
+                                        <a asp-action="Details" asp-route-id="@s.Id" class="text-decoration-none text-dark hover-primary">
+                                            @s.Name
+                                        </a>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <span class="badge bg-light text-secondary border">
+                                            <i class="bi bi-globe me-1"></i>@s.Country
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(s.TaxCode))
+                                        {
+                                            <small class="text-muted font-monospace">MST: @s.TaxCode</small>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="py-3">
+                                    <div class="fw-semibold text-dark">@(s.ContactPerson ?? "—")</div>
+                                    <div class="small text-muted mt-1">
+                                        @if (!string.IsNullOrEmpty(s.Phone))
+                                        {
+                                            <span class="me-2"><i class="bi bi-telephone me-1 text-primary"></i>@s.Phone</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(s.Email))
+                                        {
+                                            <span><i class="bi bi-envelope me-1 text-secondary"></i>@s.Email</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="py-3" style="max-width: 320px;">
+                                    <div class="small text-dark text-wrap">
+                                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>@s.Address
+                                    </div>
+                                </td>
+                                <td class="py-3 text-center">
+                                    <a asp-action="Details" asp-route-id="@s.Id" class="badge rounded-pill text-decoration-none px-3 py-2 fw-bold" style="background:#e0f2fe; color:#0369a1;">
+                                        <i class="bi bi-boxes me-1"></i>@s.SupplierProducts.Count sản phẩm
+                                    </a>
+                                </td>
+                                <td class="py-3 text-end">
+                                    @if (totalDebt > 0)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger fs-6 fw-bold px-2 py-1">
+                                            @totalDebt.ToString("N0") đ
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success fw-bold px-2 py-1">
+                                            0 đ (Hết nợ)
+                                        </span>
+                                    }
+                                </td>
+                                <td class="py-3 text-center">
+                                    @if (s.IsActive)
+                                    {
+                                        <span class="badge rounded-pill px-3 py-1" style="background:#dcfce7; color:#15803d;">
+                                            Hoạt động
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge rounded-pill px-3 py-1 bg-secondary text-white">
+                                            Tạm ngưng
+                                        </span>
+                                    }
+                                </td>
+                                <td class="py-3 px-4 text-end">
+                                    <div class="btn-group">
+                                        <a asp-action="Details" asp-route-id="@s.Id" class="btn btn-sm btn-outline-primary" title="Bảng cung ứng & Chi tiết">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@s.Id" class="btn btn-sm btn-outline-secondary" title="Sửa thông tin">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form asp-action="ToggleStatus" asp-route-id="@s.Id" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn đổi trạng thái NCC này?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm @(s.IsActive ? "btn-outline-warning" : "btn-outline-success")" title="@(s.IsActive ? "Tạm ngưng" : "Kích hoạt")">
+                                                <i class="bi @(s.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

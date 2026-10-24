@@ -1,0 +1,1489 @@
+@model IEnumerable<BeautyShop.Models.StockReceipt>
+@{
+    ViewData["Title"] = "Bảng nhập kho";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var variants = ViewBag.AllVariants as List<BeautyShop.Models.ProductVariant> ?? new();
+    var categories = ViewBag.Categories as List<BeautyShop.Models.Category> ?? new();
+    var suppliers = ViewBag.Suppliers as List<BeautyShop.Models.Supplier> ?? new();
+    var stores = ViewBag.Stores as List<BeautyShop.Models.Store> ?? new();
+    var importPorts = ViewBag.ImportPorts as List<BeautyShop.Models.ImportPort> ?? new();
+    var activePorts = importPorts.Where(p => p.AllowImport).ToList();
+
+    decimal totalVal = ViewBag.TotalValue != null ? (decimal)ViewBag.TotalValue : 0;
+    decimal totalPaid = ViewBag.TotalPaid != null ? (decimal)ViewBag.TotalPaid : 0;
+    decimal totalDebt = ViewBag.TotalDebt != null ? (decimal)ViewBag.TotalDebt : 0;
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">📥 Bảng nhập kho & Quản lý cung ứng</h2>
+        <p class="text-muted mb-0">Quản lý nhập hàng nhiều sản phẩm, theo dõi nhà cung cấp, công nợ, hóa đơn xuất xứ và định giá bán theo giá nhập.</p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="btn-group shadow-sm rounded-3 overflow-hidden me-2">
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary fw-bold px-3 py-2 bg-white">
+                <i class="bi bi-boxes me-1"></i> Tồn kho hiện tại
+            </a>
+            <a asp-action="Receipts" class="btn btn-sm btn-success fw-bold px-3 py-2">
+                <i class="bi bi-receipt me-1"></i> Bảng nhập kho
+            </a>
+            <a asp-area="Admin" asp-controller="Transfers" asp-action="Index" class="btn btn-sm btn-outline-secondary fw-bold px-3 py-2 bg-white">
+                <i class="bi bi-truck me-1"></i> Chuyển kho liên tỉnh
+            </a>
+        </div>
+        <a asp-area="Admin" asp-controller="Suppliers" asp-action="Index" class="btn btn-sm btn-outline-primary fw-bold px-3 py-2 rounded-3 shadow-sm bg-white" title="Quản lý nhà cung cấp và bảng cung ứng">
+            <i class="bi bi-building me-1"></i> Quản lý NCC & Cung ứng
+        </a>
+        <a href="/Admin/Transfers/Create?sourceStoreId=1&targetStoreId=5" class="btn btn-sm btn-outline-warning fw-bold px-3 py-2 rounded-3 shadow-sm bg-white text-dark" title="Điều chuyển hàng từ Kho tổng về Kho Tây Nam Bộ (Cần Thơ) khi thiếu hàng (Yêu cầu 7)">
+            <i class="bi bi-arrow-right-circle-fill text-warning me-1"></i> Chuyển về Tây Nam Bộ
+        </a>
+        <button type="button" class="btn btn-sm btn-primary fw-bold px-3 py-2 rounded-3 shadow-sm" onclick="openMultiImportModal()">
+            <i class="bi bi-plus-circle-fill me-1"></i> Tạo phiếu nhập hàng (Nhiều SP)
+        </button>
+    </div>
+</div>
+
+<!-- THỐNG KÊ TÀI CHÍNH & TỒN KHO NHẬP (YÊU CẦU 5) -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-primary" style="background:#eff6ff;">
+                    <i class="bi bi-receipt" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Tổng số phiếu nhập</div>
+                    <div class="fw-900 fs-3 text-dark">@(ViewBag.TotalReceipts ?? 0)</div>
+                    <small class="text-muted">Tổng số chuyến nhập kho</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-success" style="background:#f0fdf4;">
+                    <i class="bi bi-box-seam-fill" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Tổng số lượng SP nhập</div>
+                    <div class="fw-900 fs-3" style="color:#006E4A;">@(ViewBag.TotalQuantity ?? 0) <span class="fs-6 fw-normal text-muted">sp</span></div>
+                    <small class="text-success fw-semibold">Đã nhập vào hệ thống kho</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-warning" style="background:#fffbeb;">
+                    <i class="bi bi-cash-stack" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Tổng giá trị tiền nhập</div>
+                    <div class="fw-900 fs-4 text-dark">@totalVal.ToString("N0") <span class="fs-6 fw-normal text-muted">đ</span></div>
+                    <small class="text-muted">Đã trả: <strong class="text-success">@totalPaid.ToString("N0") đ</strong></small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-danger" style="background:#fef2f2;">
+                    <i class="bi bi-cash-coin" style="font-size: 1.8rem;"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Công nợ còn phải trả</div>
+                    <div class="fw-900 fs-4 text-danger">@totalDebt.ToString("N0") <span class="fs-6 fw-normal text-muted">đ</span></div>
+                    <small class="text-danger fw-semibold">@(totalDebt > 0 ? "Cần lên kế hoạch thanh toán" : "Đã thanh toán hết")</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BỘ LỌC TÌM KIẾM TOÀN DIỆN (YÊU CẦU 4 & 5 & 6 & 7) -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="Receipts" asp-area="Admin" asp-controller="Inventory" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="keyword" value="@ViewBag.Keyword"
+                           class="form-control border-start-0 ps-0"
+                           placeholder="Mã phiếu, sản phẩm, SKU, số hóa đơn, tờ khai..." />
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select name="supplierId" class="form-select form-select-sm">
+                    <option value="">-- Tất cả nhà cung cấp --</option>
+                    @foreach (var s in suppliers)
+                    {
+                        <option value="@s.Id" selected="@(ViewBag.SupplierId == s.Id)">@s.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="storeId" class="form-select form-select-sm">
+                    <option value="">-- Tất cả kho tiếp nhận --</option>
+                    @foreach (var st in stores)
+                    {
+                        <option value="@st.Id" selected="@(ViewBag.SelectedStoreId == st.Id)">@st.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-1">
+                <select name="paymentStatus" class="form-select form-select-sm">
+                    <option value="">-- Thanh toán --</option>
+                    <option value="Paid" selected="@(ViewBag.PaymentStatus == "Paid")">Đã thanh toán</option>
+                    <option value="Unpaid" selected="@(ViewBag.PaymentStatus == "Unpaid")">Chưa trả (Nợ)</option>
+                    <option value="Partial" selected="@(ViewBag.PaymentStatus == "Partial")">Trả một phần</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <select name="receiptType" class="form-select form-select-sm">
+                    <option value="">-- Hình thức --</option>
+                    <option value="Domestic" selected="@(ViewBag.ReceiptType == "Domestic")">Trong nước</option>
+                    <option value="Import" selected="@(ViewBag.ReceiptType == "Import")">Nhập khẩu</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+                <input type="date" name="fromDate" value="@ViewBag.FromDate" class="form-control form-control-sm" title="Từ ngày" />
+                <input type="date" name="toDate" value="@ViewBag.ToDate" class="form-control form-control-sm" title="Đến ngày" />
+            </div>
+            <div class="col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-sm w-100 fw-bold rounded-3 text-white" style="background:#006E4A;">
+                    <i class="bi bi-funnel-fill"></i> Lọc
+                </button>
+                @if (!string.IsNullOrEmpty((string)ViewBag.Keyword) || ViewBag.SupplierId != null || ViewBag.SelectedStoreId != null || !string.IsNullOrEmpty((string)ViewBag.PaymentStatus) || !string.IsNullOrEmpty((string)ViewBag.ReceiptType) || !string.IsNullOrEmpty((string)ViewBag.FromDate))
+                {
+                    <a asp-action="Receipts" class="btn btn-sm btn-outline-secondary rounded-3" title="Xóa bộ lọc">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- BẢNG DANH SÁCH PHIẾU NHẬP KHO -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
+        <div>
+            <h5 class="fw-700 mb-0">📋 Danh sách phiếu nhập hàng & Quản lý công nợ</h5>
+            <small class="text-muted">Chứng từ kế toán kho chi tiết: Cho phép theo dõi đơn đã trả/chưa trả, hóa đơn, xuất xứ và điều chuyển nội bộ</small>
+        </div>
+        <span class="text-muted small">Hiển thị <strong>@Model.Count()</strong> phiếu nhập</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox" style="font-size:3.5rem;"></i>
+                <p class="mt-2 mb-3">Chưa có dữ liệu phiếu nhập kho nào phù hợp với điều kiện tìm kiếm.</p>
+                <button type="button" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="openMultiImportModal()">
+                    <i class="bi bi-plus-circle me-1"></i> Tạo phiếu nhập đầu tiên
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background:#f8fafc;">
+                        <tr>
+                            <th class="px-4 py-3">Mã phiếu</th>
+                            <th class="py-3">Hình thức &amp; Xuất xứ</th>
+                            <th class="py-3">Nhà cung cấp &amp; Hóa đơn</th>
+                            <th class="py-3">Kho tiếp nhận</th>
+                            <th class="py-3" style="max-width:280px;">Mặt hàng nhập (Nhiều SP)</th>
+                            <th class="py-3 text-center">Tổng SL</th>
+                            <th class="py-3 text-end">Tổng tiền hàng</th>
+                            <th class="py-3 text-center">Thanh toán &amp; Công nợ</th>
+                            <th class="py-3">Ngày &amp; Người lập</th>
+                            <th class="py-3 px-4 text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model)
+                        {
+                            decimal totalAmount = r.TotalAmount > 0 ? r.TotalAmount : r.Quantity * r.ImportPrice;
+                            int totalQty = r.Items.Any() ? r.Items.Sum(i => i.Quantity) : r.Quantity;
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <span class="badge bg-primary-subtle text-primary fw-bold font-monospace px-2 py-1">
+                                        @r.ReceiptCode
+                                    </span>
+                                </td>
+                                <td class="py-3">
+                                    @if (r.ReceiptType == "Import")
+                                    {
+                                        <span class="badge px-2 py-1 rounded-pill fw-bold" style="background:#fef3c7; color:#b45309;">
+                                            <i class="bi bi-globe-americas me-1"></i> Nhập khẩu
+                                        </span>
+                                        <div class="small text-muted mt-1">
+                                            <i class="bi bi-flag me-1"></i>@(r.OriginCountry ?? "Quốc tế")
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge px-2 py-1 rounded-pill fw-bold" style="background:#e0f2fe; color:#0369a1;">
+                                            <i class="bi bi-house-door me-1"></i> Nội địa
+                                        </span>
+                                        <div class="small text-muted mt-1">
+                                            <i class="bi bi-flag me-1"></i>Việt Nam
+                                        </div>
+                                    }
+                                </td>
+                                <td class="py-3">
+                                    @if (r.SupplierRef != null)
+                                    {
+                                        <a asp-area="Admin" asp-controller="Suppliers" asp-action="Details" asp-route-id="@r.SupplierRef.Id" class="fw-bold text-decoration-none text-dark hover-primary">
+                                            @r.SupplierRef.Name
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <div class="fw-bold text-dark">@(r.Supplier ?? "—")</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(r.InvoiceNumber))
+                                    {
+                                        <div class="small text-muted font-monospace mt-1">
+                                            <i class="bi bi-file-earmark-text me-1 text-primary"></i>HĐ: @r.InvoiceNumber
+                                        </div>
+                                    }
+                                </td>
+                                <td class="py-3">
+                                    <div class="fw-bold text-dark">@(r.Store?.Name ?? "Kho chính")</div>
+                                    <div class="small text-muted">
+                                        <i class="bi bi-geo-alt me-1"></i>@(r.Store?.ProvinceName ?? "TP. Hồ Chí Minh")
+                                    </div>
+                                </td>
+                                <td class="py-3" style="max-width:280px;">
+                                    @if (r.Items.Any())
+                                    {
+                                        <div class="fw-bold text-dark small">
+                                            <span class="badge bg-secondary-subtle text-secondary me-1">@r.Items.Count mặt hàng</span>
+                                        </div>
+                                        <div class="small text-muted text-truncate mt-1" title="@string.Join(", ", r.Items.Select(i => $"{i.Variant?.Product?.Name} ({i.Quantity} sp)"))">
+                                            @string.Join(", ", r.Items.Select(i => $"{i.Variant?.Product?.Name} ({i.Quantity})"))
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="fw-bold text-dark small">@r.Variant?.Product?.Name</div>
+                                        <div class="small text-muted"><code>@r.Variant?.SKU</code></div>
+                                    }
+                                </td>
+                                <td class="py-3 text-center">
+                                    <span class="badge rounded-pill px-3 py-2 fw-900 fs-6" style="background:#e6f5ef;color:#006E4A;">
+                                        +@totalQty
+                                    </span>
+                                </td>
+                                <td class="py-3 text-end fw-bold text-dark">
+                                    @totalAmount.ToString("N0") đ
+                                </td>
+                                <td class="py-3 text-center">
+                                    @if (r.PaymentStatus == "Paid")
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#dcfce7; color:#15803d;">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Đã thanh toán
+                                        </span>
+                                    }
+                                    else if (r.PaymentStatus == "Unpaid")
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#fee2e2; color:#b91c1c;">
+                                            <i class="bi bi-exclamation-circle-fill me-1"></i> Chưa trả (Nợ: @r.DebtAmount.ToString("N0")đ)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#fef3c7; color:#b45309;">
+                                            <i class="bi bi-clock-history me-1"></i> Còn nợ @r.DebtAmount.ToString("N0")đ
+                                        </span>
+                                    }
+                                </td>
+                                <td class="py-3">
+                                    <div class="text-muted small fw-semibold">
+                                        <i class="bi bi-calendar3 me-1"></i>@r.ImportDate.ToString("dd/MM/yyyy")
+                                    </div>
+                                    <small class="text-muted">Bởi: @(r.CreatedByName ?? "NV kho")</small>
+                                </td>
+                                <td class="py-3 px-4 text-end">
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" title="Xem chi tiết phiếu nhập" onclick="viewReceiptDetail(@r.Id)">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </button>
+                                        @if (r.PaymentStatus != "Paid" && r.DebtAmount > 0)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Thanh toán công nợ cho phiếu này" onclick="openPaymentModal(@r.Id, '@r.ReceiptCode', @r.DebtAmount, '@Html.Raw(r.Supplier?.Replace("'", "\\'"))')">
+                                                <i class="bi bi-cash-coin"></i>
+                                            </button>
+                                        }
+                                        @if (r.StoreId == 1)
+                                        {
+                                            <a href="/Admin/Transfers/Create?sourceStoreId=1&targetStoreId=5" class="btn btn-sm btn-outline-warning" title="Chuyển hàng từ Kho tổng này về Kho Tây Nam Bộ (Yêu cầu 7)">
+                                                <i class="bi bi-truck text-dark"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL TẠO PHIẾU NHẬP KHO NHIỀU SẢN PHẨM (YÊU CẦU 1, 2, 3, 4, 5, 6, 7, 10) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="multiImportModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-light rounded-top-4 pb-3">
+                <div>
+                    <h5 class="modal-title fw-800 text-dark mb-1">
+                        <i class="bi bi-box-seam text-primary me-2"></i>Lập phiếu nhập kho nhiều sản phẩm
+                    </h5>
+                    <div class="text-muted small">
+                        Quy định: Nhập cùng chuyến/lô nhãn hiệu <strong>bắt buộc gồm từ 2 sản phẩm trở lên</strong> (son, phấn, chì kẻ...).
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="multiImportForm">
+                    <!-- 1. THÔNG TIN CHỨNG TỪ & NHÀ CUNG CẤP -->
+                    <div class="card border p-3 rounded-4 mb-4 bg-light">
+                        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-info-circle-fill text-primary me-2"></i>Thông tin chứng từ &amp; Đối tác</h6>
+                        
+                        <div class="row g-3 mb-3">
+                            <!-- HÌNH THỨC NHẬP HÀNG (YÊU CẦU 6) -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-secondary">Hình thức nhập hàng <span class="text-danger">*</span></label>
+                                <div class="d-flex gap-3 pt-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="modalReceiptType" id="mTypeDomestic" value="Domestic" checked onchange="onModalReceiptTypeChange()">
+                                        <label class="form-check-label fw-semibold" for="mTypeDomestic">
+                                            <i class="bi bi-house-door me-1 text-primary"></i> Nhập trong nước
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="modalReceiptType" id="mTypeImport" value="Import" onchange="onModalReceiptTypeChange()">
+                                        <label class="form-check-label fw-semibold" for="mTypeImport">
+                                            <i class="bi bi-globe-americas me-1 text-warning"></i> Nhập khẩu quốc tế
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- NHÀ CUNG CẤP (YÊU CẦU 2 & 3) -->
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold small text-secondary">
+                                    Nhà cung cấp / Đối tác <span class="text-danger">*</span>
+                                </label>
+                                <select id="mSupplierId" class="form-select py-2 shadow-sm" required onchange="onSupplierChange()">
+                                    <option value="">-- Chọn nhà cung cấp --</option>
+                                    @foreach (var s in suppliers)
+                                    {
+                                        <option value="@s.Id" 
+                                                data-name="@s.Name"
+                                                data-country="@s.Country"
+                                                data-address="@s.Address"
+                                                data-phone="@s.Phone"
+                                                data-contact="@s.ContactPerson">
+                                            @s.Name [@s.Country]
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- XUẤT XỨ HÀNG HÓA (YÊU CẦU 5) -->
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-secondary">Quốc gia xuất xứ <span class="text-danger">*</span></label>
+                                <input type="text" id="mOriginCountry" class="form-control py-2 shadow-sm" value="Việt Nam" required />
+                            </div>
+                        </div>
+
+                        <!-- THẺ THÔNG TIN NCC & ĐỊA CHỈ PHẢN HỒI KHI HÀNG LỖI (YÊU CẦU 2) -->
+                        <div id="supplierInfoCard" class="alert alert-secondary py-2 px-3 small rounded-3 mb-3 d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong id="sCardName" class="text-dark fs-6"></strong>
+                                <span id="sCardCountry" class="badge bg-light text-dark border"></span>
+                            </div>
+                            <div class="text-dark">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i><strong>Địa chỉ phản hồi khi hàng lỗi:</strong> <span id="sCardAddress"></span>
+                            </div>
+                            <div class="text-muted mt-1">
+                                <span class="me-3"><i class="bi bi-person me-1"></i>Đại diện: <strong id="sCardContact"></strong></span>
+                                <span><i class="bi bi-telephone me-1"></i>SĐT: <strong id="sCardPhone"></strong></span>
+                            </div>
+                        </div>
+
+                        <!-- KHUNG LỊCH SỬ NHẬP CỦA NCC NÀY ĐỂ ĐỐI CHIẾU (YÊU CẦU 8) -->
+                        <div id="supplierHistoryCard" class="card border p-2 rounded-3 mb-3 bg-white d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold small text-primary"><i class="bi bi-clock-history me-1"></i>Lịch sử các lần nhập trước của NCC này (Đối chiếu tránh trùng &amp; So sánh giá nhập - Yêu cầu 8):</span>
+                                <small class="text-muted">5 lần nhập gần nhất</small>
+                            </div>
+                            <div id="supplierHistoryList" class="small">
+                                <!-- Ajax load -->
+                            </div>
+                        </div>
+
+                        <!-- PHẦN CẢNG THÔNG QUAN CHO HÀNG QUỐC TẾ (YÊU CẦU 6) -->
+                        <div id="mPortSection" class="row g-3 mb-3 d-none">
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold small text-secondary">
+                                    Cảng thông quan quốc tế (Sân bay / Cảng biển) <span class="text-danger">*</span>
+                                </label>
+                                <select id="mImportPortId" class="form-select py-2 shadow-sm" onchange="onModalPortSelectChange()">
+                                    <option value="">-- Chọn cảng tiếp nhận thông quan --</option>
+                                    @foreach (var p in activePorts)
+                                    {
+                                        <option value="@p.Id" 
+                                                data-province="@p.ProvinceName"
+                                                data-province-code="@p.ProvinceCode"
+                                                data-port-type="@p.PortType">
+                                            [@(p.PortType == "Sea" ? "Cảng biển" : "Sân bay QT")] @p.Name — @p.ProvinceName
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold small text-secondary">
+                                    Số vận đơn / Tờ khai hải quan
+                                </label>
+                                <input type="text" id="mCustomsDeclarationNumber" class="form-control py-2 shadow-sm" placeholder="Ví dụ: TKHQ-10492852 / BL-8829" />
+                            </div>
+                            <div id="mPortAlert" class="col-12 py-1 small fw-semibold text-danger d-none"></div>
+                        </div>
+
+                        <!-- CHỌN KHO NHẬP HÀNG (YÊU CẦU 7) -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">
+                                    Kho tiếp nhận hàng <span class="text-danger">*</span>
+                                </label>
+                                <select id="mStoreId" class="form-select py-2 shadow-sm" required onchange="onModalStoreChange()">
+                                    @foreach (var s in stores)
+                                    {
+                                        <option value="@s.Id" 
+                                                data-province="@s.ProvinceName"
+                                                data-province-code="@s.ProvinceCode"
+                                                data-region="@s.Region"
+                                                data-store-type="@s.StoreType">
+                                            [@(s.Region ?? "Toàn quốc")] @s.Name — @s.ProvinceName (@(s.StoreType ?? "Kho hàng"))
+                                        </option>
+                                    }
+                                </select>
+                                <small class="text-muted d-block mt-1">
+                                    <i class="bi bi-info-circle me-1"></i>Hàng quốc tế nhập về kho tổng TP.HCM / Hà Nội rồi có thể chuyển tiếp về kho Tây Nam Bộ (Cần Thơ) khi thiếu hàng.
+                                </small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-secondary">Số hóa đơn tài chính (VAT)</label>
+                                <input type="text" id="mInvoiceNumber" class="form-control py-2 shadow-sm" placeholder="Số hóa đơn GTGT..." />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-secondary">Ngày nhập hàng <span class="text-danger">*</span></label>
+                                <input type="datetime-local" id="mImportDate" class="form-control py-2 shadow-sm" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required />
+                            </div>
+                        </div>
+
+                        <!-- THANH TOÁN VÀ CÔNG NỢ (YÊU CẦU 5) -->
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">Trạng thái thanh toán <span class="text-danger">*</span></label>
+                                <select id="mPaymentStatus" class="form-select py-2 shadow-sm" onchange="onModalPaymentStatusChange()">
+                                    <option value="Paid">Đã thanh toán (Trả tiền ngay bằng CK/Tiền mặt)</option>
+                                    <option value="Unpaid">Chưa thanh toán (Ghi nhận công nợ nhà cung cấp)</option>
+                                    <option value="Partial">Thanh toán một phần (Trả trước một phần, còn lại ghi nợ)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" id="mPaidAmountContainer" style="display:none;">
+                                <label class="form-label fw-bold small text-secondary">Số tiền đã trả trước (VNĐ)</label>
+                                <div class="input-group shadow-sm">
+                                    <input type="number" id="mPaidAmount" class="form-control py-2 text-end fw-bold" min="0" step="1000" value="0" />
+                                    <span class="input-group-text bg-white text-muted">đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. DANH SÁCH MẶT HÀNG NHẬP (YÊU CẦU 1, 3, 4, 9, 10) -->
+                    <div class="card border p-3 rounded-4 mb-3 bg-white">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">
+                                    <i class="bi bi-cart-plus-fill text-success me-2"></i>Chi tiết các mặt hàng nhập kho
+                                    <span class="badge bg-danger ms-2" id="req1Badge">Bắt buộc tối thiểu 2 sản phẩm (Yêu cầu 1)</span>
+                                </h6>
+                                <small class="text-muted">
+                                    Chọn loại sản phẩm (son môi, kem chống nắng...) -> lọc danh sách sản phẩm theo loại và theo nhà cung cấp -> nhập số lượng, đơn giá và định lại giá bán.
+                                </small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success fw-bold rounded-3 shadow-sm" onclick="addNewItemRow()">
+                                <i class="bi bi-plus-circle-fill me-1"></i> Thêm mặt hàng khác
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle mb-0" id="receiptItemsTable">
+                                <thead style="background:#f1f5f9;">
+                                    <tr>
+                                        <th style="width: 40px;" class="text-center">#</th>
+                                        <th style="width: 170px;">1. Loại sản phẩm (Yêu cầu 4)</th>
+                                        <th style="min-width: 250px;">2. Sản phẩm &amp; Biến thể (Yêu cầu 3)</th>
+                                        <th style="width: 110px;" class="text-center">3. Số lượng</th>
+                                        <th style="width: 180px;" class="text-end">4. Đơn giá nhập</th>
+                                        <th style="width: 140px;" class="text-end">5. Thành tiền</th>
+                                        <th style="min-width: 230px;">6. Định giá bán lẻ mới (Yêu cầu 10)</th>
+                                        <th style="width: 50px;" class="text-center">Xóa</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="receiptItemsBody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                                <tfoot class="table-light fw-bold">
+                                    <tr>
+                                        <td colspan="3" class="text-end text-uppercase small">Tổng cộng phiếu nhập:</td>
+                                        <td class="text-center fs-6 text-primary" id="footerTotalQty">0 sp</td>
+                                        <td></td>
+                                        <td class="text-end fs-6 text-danger" id="footerTotalAmount">0 đ</td>
+                                        <td colspan="2" class="text-muted small fst-italic" id="footerValidationText">
+                                            Chưa đủ 2 sản phẩm
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- GHI CHÚ -->
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-secondary">Ghi chú phiếu nhập</label>
+                        <textarea id="mNote" class="form-control shadow-sm" rows="2" placeholder="Ghi chú số lô, hạn sử dụng, tình trạng niêm phong thùng hàng..."></textarea>
+                    </div>
+
+                    <div id="mValidationAlert" class="alert alert-danger py-2 small d-none mt-3"></div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light fw-bold rounded-3" data-bs-dismiss="modal">Hủy bỏ</button>
+                <button type="button" id="btnSubmitMultiReceipt" class="btn btn-primary fw-800 rounded-3 px-4 shadow-sm" onclick="submitMultiItemReceipt()">
+                    <i class="bi bi-check-circle-fill me-1"></i> Lưu và nhập kho toàn bộ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL XEM CHI TIẾT PHIẾU NHẬP (READ-ONLY) (YÊU CẦU 1, 2, 5, 6, 7, 10)   -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="receiptDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-light rounded-top-4 pb-3">
+                <div>
+                    <h5 class="modal-title fw-800 text-dark mb-0">
+                        <i class="bi bi-file-earmark-check-fill text-success me-2"></i>Chi tiết phiếu nhập kho
+                    </h5>
+                    <span id="dt-receiptCode" class="badge bg-primary-subtle text-primary font-monospace fs-6 mt-1"></span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded-3 h-100">
+                            <div class="text-muted small text-uppercase fw-bold">Hình thức &amp; Xuất xứ</div>
+                            <div id="dt-receiptTypeLabel" class="fw-bold fs-6 mt-1"></div>
+                            <div id="dt-origin" class="small text-muted mt-1"></div>
+                            <div id="dt-portInfo" class="small text-muted mt-1"></div>
+                            <div id="dt-customs" class="small text-muted font-monospace"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded-3 h-100">
+                            <div class="text-muted small text-uppercase fw-bold">Nhà cung cấp</div>
+                            <div id="dt-supplier" class="fw-bold fs-6 mt-1 text-dark"></div>
+                            <div id="dt-supplierAddress" class="small text-danger mt-1"></div>
+                            <div id="dt-supplierPhone" class="small text-muted"></div>
+                            <div id="dt-invoice" class="small text-primary font-monospace mt-1"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded-3 h-100">
+                            <div class="text-muted small text-uppercase fw-bold">Kho tiếp nhận</div>
+                            <div id="dt-storeName" class="fw-bold fs-6 mt-1 text-dark"></div>
+                            <div id="dt-storeMeta" class="small text-muted mt-1"></div>
+                            <div class="mt-2" id="dt-transferLinkContainer"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BẢNG MẶT HÀNG NHẬP -->
+                <div class="card border rounded-4 mb-3">
+                    <div class="card-header bg-white border-0 pt-3 px-3">
+                        <div class="fw-bold text-dark">📦 Danh sách mặt hàng nhập trong phiếu</div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="px-3 py-2 small">Sản phẩm &amp; Biến thể</th>
+                                        <th class="py-2 small text-center">Số lượng</th>
+                                        <th class="py-2 small text-end">Giá nhập vốn</th>
+                                        <th class="py-2 small text-end">Thành tiền</th>
+                                        <th class="py-2 small text-end">Giá bán lẻ định lại</th>
+                                        <th class="py-2 px-3 small text-end">Giá bán hiện tại</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dt-itemsTableBody">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TỔNG TIỀN VÀ CÔNG NỢ -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-3 bg-light">
+                            <div class="text-muted small">Tổng giá trị đơn hàng:</div>
+                            <div id="dt-totalAmount" class="fs-5 fw-bold text-dark"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-3 bg-light">
+                            <div class="text-muted small">Đã thanh toán:</div>
+                            <div id="dt-paidAmount" class="fs-5 fw-bold text-success"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-3 bg-light">
+                            <div class="text-muted small">Công nợ còn lại:</div>
+                            <div id="dt-debtAmount" class="fs-5 fw-bold text-danger"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <small class="text-muted">Ngày thực hiện nhập: <strong id="dt-importDate" class="text-dark"></strong></small><br />
+                        <small class="text-muted">Người lập phiếu: <strong id="dt-createdByName" class="text-dark"></strong></small>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">Ghi chú: <span id="dt-note" class="fst-italic"></span></small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary fw-bold rounded-3 px-4" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL THANH TOÁN CÔNG NỢ (YÊU CẦU 5)                                     -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-light rounded-top-4 pb-3">
+                <h5 class="modal-title fw-800 text-dark">
+                    <i class="bi bi-cash-coin text-success me-2"></i>Thanh toán công nợ phiếu nhập
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="UpdatePayment" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="receiptId" id="payModalReceiptId" />
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-light rounded-3 mb-3">
+                        <div class="text-muted small">Phiếu nhập: <strong id="payModalReceiptCode" class="font-monospace text-primary"></strong></div>
+                        <div class="text-muted small mt-1">Nhà cung cấp: <strong id="payModalSupplier" class="text-dark"></strong></div>
+                        <div class="text-muted small mt-1">Công nợ hiện tại: <strong id="payModalCurrentDebt" class="text-danger fs-6"></strong></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Số tiền thanh toán lần này (VNĐ) <span class="text-danger">*</span></label>
+                        <div class="input-group shadow-sm">
+                            <input type="number" name="paymentAmount" id="payModalAmount" class="form-control py-2 text-end fw-bold text-success fs-5" min="1000" step="1000" required />
+                            <span class="input-group-text bg-white text-muted">đ</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-secondary">Ghi chú thanh toán</label>
+                        <input type="text" name="note" class="form-control py-2 shadow-sm" placeholder="Ví dụ: Chuyển khoản Vietcombank đợt 2, ủy nhiệm chi số..." />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold rounded-3" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-3 px-4 shadow-sm">
+                        <i class="bi bi-check-circle-fill me-1"></i> Xác nhận thanh toán
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL SO SÁNH GIÁ NHẬP TỪ NƠI KHÁC (YÊU CẦU 9)                            -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="priceComparisonModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-light rounded-top-4 pb-3">
+                <h5 class="modal-title fw-800 text-dark">
+                    <i class="bi bi-lightbulb-fill text-warning me-2"></i>Gợi ý &amp; So sánh giá nhập từ nơi khác (Yêu cầu 9)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-3">
+                    Hiển thị giá nhập của sản phẩm này (hoặc sản phẩm tương tự cùng dung tích/màu) từ các nhà cung cấp khác để chọn nơi nhập tối ưu chi phí.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nhà cung cấp</th>
+                                <th>Sản phẩm &amp; Quy cách</th>
+                                <th class="text-end">Đơn giá tham chiếu</th>
+                                <th>Nguồn dữ liệu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="priceComparisonTableBody">
+                            <!-- Dynamic -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary fw-bold rounded-3 px-4" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Toàn bộ dữ liệu Categories phục vụ lọc sản phẩm (Yêu cầu 4)
+    const allCategories = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(categories.Select(c => new { id = c.Id, name = c.Name })));
+    let rowCounter = 0;
+
+    // Mở modal tạo phiếu nhập nhiều sản phẩm
+    function openMultiImportModal() {
+        document.getElementById('multiImportForm').reset();
+        document.getElementById('receiptItemsBody').innerHTML = '';
+        rowCounter = 0;
+        document.getElementById('supplierInfoCard').classList.add('d-none');
+        document.getElementById('supplierHistoryCard').classList.add('d-none');
+        document.getElementById('mValidationAlert').classList.add('d-none');
+
+        // Khởi tạo sẵn 2 dòng sản phẩm theo Yêu cầu 1 (Tối thiểu 2 sản phẩm)
+        addNewItemRow();
+        addNewItemRow();
+
+        onModalReceiptTypeChange();
+        new bootstrap.Modal(document.getElementById('multiImportModal')).show();
+    }
+
+    // Khi thay đổi loại phiếu nhập (Trong nước vs Nhập khẩu) (Yêu cầu 6)
+    function onModalReceiptTypeChange() {
+        const isImport = document.getElementById('mTypeImport').checked;
+        const portSection = document.getElementById('mPortSection');
+        const portSelect = document.getElementById('mImportPortId');
+        const originInput = document.getElementById('mOriginCountry');
+
+        if (isImport) {
+            portSection.classList.remove('d-none');
+            portSelect.required = true;
+            if (originInput.value === 'Việt Nam' || !originInput.value) {
+                originInput.value = 'Hàn Quốc'; // Mặc định quốc tế
+            }
+            onModalPortSelectChange();
+        } else {
+            portSection.classList.add('d-none');
+            portSelect.required = false;
+            document.getElementById('mPortAlert').classList.add('d-none');
+            originInput.value = 'Việt Nam';
+
+            // Mở lại toàn bộ các kho cho phiếu trong nước
+            const storeSelect = document.getElementById('mStoreId');
+            for (let i = 0; i < storeSelect.options.length; i++) {
+                storeSelect.options[i].disabled = false;
+                storeSelect.options[i].hidden = false;
+            }
+        }
+    }
+
+    // Lọc kho cùng địa bàn với cảng nhập (Yêu cầu 6)
+    function onModalPortSelectChange() {
+        const isImport = document.getElementById('mTypeImport').checked;
+        if (!isImport) return;
+
+        const portSelect = document.getElementById('mImportPortId');
+        const storeSelect = document.getElementById('mStoreId');
+        const alertBox = document.getElementById('mPortAlert');
+
+        if (portSelect.selectedIndex <= 0) {
+            alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>Vui lòng chọn cảng thông quan để lọc kho tiếp nhận phù hợp.';
+            alertBox.classList.remove('d-none');
+            return;
+        }
+
+        const selectedPortOpt = portSelect.options[portSelect.selectedIndex];
+        const portProvince = (selectedPortOpt.getAttribute('data-province') || '').trim().toLowerCase();
+        const portProvinceCode = (selectedPortOpt.getAttribute('data-province-code') || '').trim();
+
+        let matchingCount = 0;
+        let firstMatchingIndex = -1;
+
+        for (let i = 0; i < storeSelect.options.length; i++) {
+            const opt = storeSelect.options[i];
+            const storeProvince = (opt.getAttribute('data-province') || '').trim().toLowerCase();
+            const storeProvinceCode = (opt.getAttribute('data-province-code') || '').trim();
+
+            const isMatch = (portProvinceCode && storeProvinceCode && portProvinceCode === storeProvinceCode) ||
+                            (portProvince && storeProvince && (portProvince === storeProvince || portProvince.includes(storeProvince) || storeProvince.includes(portProvince)));
+
+            if (isMatch) {
+                opt.disabled = false;
+                opt.hidden = false;
+                matchingCount++;
+                if (firstMatchingIndex === -1) firstMatchingIndex = i;
+            } else {
+                opt.disabled = true;
+                opt.hidden = true;
+            }
+        }
+
+        if (matchingCount > 0) {
+            alertBox.classList.add('d-none');
+            if (storeSelect.selectedIndex === -1 || storeSelect.options[storeSelect.selectedIndex].disabled) {
+                storeSelect.selectedIndex = firstMatchingIndex;
+            }
+        } else {
+            alertBox.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i><strong>Chưa có kho phù hợp:</strong> Địa bàn "${selectedPortOpt.getAttribute('data-province')}" chưa có kho.`;
+            alertBox.classList.remove('d-none');
+        }
+    }
+
+    function onModalStoreChange() {
+        // Tự động cập nhật nếu cần
+    }
+
+    // Khi chọn Nhà cung cấp (Yêu cầu 2, 3, 8)
+    function onSupplierChange() {
+        const select = document.getElementById('mSupplierId');
+        const infoCard = document.getElementById('supplierInfoCard');
+        const histCard = document.getElementById('supplierHistoryCard');
+
+        if (select.selectedIndex <= 0) {
+            infoCard.classList.add('d-none');
+            histCard.classList.add('d-none');
+            // Cập nhật lại sản phẩm trên các dòng
+            refreshAllItemRowProducts();
+            return;
+        }
+
+        const opt = select.options[select.selectedIndex];
+        const supplierId = select.value;
+        const name = opt.getAttribute('data-name');
+        const country = opt.getAttribute('data-country');
+        const address = opt.getAttribute('data-address');
+        const phone = opt.getAttribute('data-phone') || '—';
+        const contact = opt.getAttribute('data-contact') || '—';
+
+        // Hiển thị thẻ thông tin NCC & Địa chỉ phản hồi khi hàng lỗi (Yêu cầu 2)
+        document.getElementById('sCardName').innerText = name;
+        document.getElementById('sCardCountry').innerText = country;
+        document.getElementById('sCardAddress').innerText = address;
+        document.getElementById('sCardPhone').innerText = phone;
+        document.getElementById('sCardContact').innerText = contact;
+        document.getElementById('mOriginCountry').value = country;
+        infoCard.classList.remove('d-none');
+
+        // Tải lịch sử các đơn nhập trước của NCC này để đối chiếu (Yêu cầu 8)
+        fetch(`/Admin/Inventory/GetSupplierReceiptHistory?supplierId=${supplierId}`)
+            .then(res => res.json())
+            .then(result => {
+                if (result.success && result.data && result.data.length > 0) {
+                    let html = '<div class="table-responsive"><table class="table table-sm table-bordered mb-0"><thead><tr class="table-light"><th>Mã phiếu</th><th>Ngày nhập</th><th>Mặt hàng</th><th>Tổng tiền</th><th>Thanh toán</th></tr></thead><tbody>';
+                    result.data.forEach(h => {
+                        const itemsStr = h.items.map(i => `${i.productName} (${i.quantity} sp x ${Number(i.importPrice).toLocaleString('vi-VN')}đ)`).join('; ');
+                        html += `<tr>
+                            <td class="font-monospace fw-bold">${h.receiptCode}</td>
+                            <td>${h.importDate}</td>
+                            <td>${itemsStr}</td>
+                            <td class="text-end fw-bold">${Number(h.totalAmount).toLocaleString('vi-VN')} đ</td>
+                            <td class="text-center"><span class="badge ${h.paymentStatus === 'Paid' ? 'bg-success' : 'bg-danger'}">${h.paymentStatus === 'Paid' ? 'Đã trả' : 'Còn nợ'}</span></td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                    document.getElementById('supplierHistoryList').innerHTML = html;
+                    histCard.classList.remove('d-none');
+                } else {
+                    document.getElementById('supplierHistoryList').innerHTML = '<div class="text-muted fst-italic">Chưa có phiếu nhập nào trước đây từ nhà cung cấp này.</div>';
+                    histCard.classList.remove('d-none');
+                }
+            });
+
+        // Cập nhật lại dropdown sản phẩm trên các dòng theo bảng cung ứng của NCC này (Yêu cầu 3)
+        refreshAllItemRowProducts();
+    }
+
+    function onModalPaymentStatusChange() {
+        const status = document.getElementById('mPaymentStatus').value;
+        const container = document.getElementById('mPaidAmountContainer');
+        container.style.display = (status === 'Partial') ? 'block' : 'none';
+    }
+
+    // =========================================================================
+    // DYNAMIC ITEM ROWS: YÊU CẦU 1, 3, 4, 9, 10
+    // =========================================================================
+    function addNewItemRow() {
+        rowCounter++;
+        const rowId = `row_${rowCounter}`;
+        const tbody = document.getElementById('receiptItemsBody');
+
+        // Tạo options cho Category
+        let catOptions = '<option value="">-- Chọn Loại SP --</option>';
+        allCategories.forEach(c => {
+            catOptions += `<option value="${c.id}">${c.name}</option>`;
+        });
+
+        const tr = document.createElement('tr');
+        tr.id = rowId;
+        tr.className = 'item-row';
+        tr.innerHTML = `
+            <td class="text-center fw-bold text-muted row-index"></td>
+            <td>
+                <!-- BƯỚC 1: CHỌN LOẠI SẢN PHẨM (YÊU CẦU 4) -->
+                <select class="form-select form-select-sm row-category" required onchange="onRowCategoryChange('${rowId}')">
+                    ${catOptions}
+                </select>
+            </td>
+            <td>
+                <!-- BƯỚC 2: CHỌN SẢN PHẨM & BIẾN THỂ (LỌC THEO LOẠI & NCC - YÊU CẦU 3 & 4) -->
+                <select class="form-select form-select-sm row-variant" required disabled onchange="onRowVariantChange('${rowId}')">
+                    <option value="">-- Vui lòng chọn Loại SP trước --</option>
+                </select>
+                <div class="row-product-info small text-muted mt-1"></div>
+            </td>
+            <td>
+                <!-- SỐ LƯỢNG NHẬP -->
+                <input type="number" class="form-control form-control-sm text-center fw-bold text-primary row-qty" 
+                       value="10" min="1" required oninput="calculateRowTotal('${rowId}')" />
+            </td>
+            <td>
+                <!-- ĐƠN GIÁ NHẬP & NÚT SO SÁNH GIÁ (YÊU CẦU 9) -->
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control form-control-sm text-end fw-bold row-price" 
+                           value="100000" min="1000" step="1000" required oninput="calculateRowTotal('${rowId}')" />
+                    <span class="input-group-text bg-white small">đ</span>
+                </div>
+                <div class="mt-1 d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none small text-warning" onclick="openPriceComparisonForRow('${rowId}')" title="So sánh giá từ nơi khác (Yêu cầu 9)">
+                        <i class="bi bi-lightbulb-fill"></i> So sánh giá
+                    </button>
+                    <span class="row-last-price small text-muted font-monospace"></span>
+                </div>
+            </td>
+            <td class="text-end fw-bold text-dark row-total">
+                0 đ
+            </td>
+            <td>
+                <!-- ĐỊNH LẠI GIÁ BÁN MỚI THEO GIÁ NHẬP (YÊU CẦU 10) -->
+                <div class="d-flex justify-content-between align-items-center small mb-1">
+                    <span class="text-muted">Giá bán hiện tại:</span>
+                    <strong class="row-current-retail text-dark">0 đ</strong>
+                </div>
+                <div class="input-group input-group-sm mb-1">
+                    <span class="input-group-text bg-light text-muted small">Giá mới</span>
+                    <input type="number" class="form-control form-control-sm text-end fw-bold text-success row-new-retail" 
+                           placeholder="Định lại giá..." step="1000" min="0" oninput="checkPriceMargin('${rowId}')" />
+                    <span class="input-group-text bg-white small">đ</span>
+                </div>
+                <div class="d-flex gap-1 justify-content-end mb-1">
+                    <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-1" style="font-size:11px;" onclick="applyMarkup('${rowId}', 0.3)" title="Tự động tính giá bán = Giá nhập + 30%">+30%</button>
+                    <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-1" style="font-size:11px;" onclick="applyMarkup('${rowId}', 0.5)" title="Tự động tính giá bán = Giá nhập + 50%">+50%</button>
+                    <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-1" style="font-size:11px;" onclick="applyMarkup('${rowId}', 1.0)" title="Tự động tính giá bán = Giá nhập x 2">+100%</button>
+                </div>
+                <div class="row-price-warning small fw-semibold text-danger d-none"></div>
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-link text-danger p-0 border-0" onclick="removeRow('${rowId}')" title="Xóa dòng này">
+                    <i class="bi bi-trash fs-5"></i>
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+        updateRowIndices();
+        calculateAllTotals();
+    }
+
+    // Xóa dòng
+    function removeRow(rowId) {
+        const row = document.getElementById(rowId);
+        if (row) {
+            row.remove();
+            updateRowIndices();
+            calculateAllTotals();
+        }
+    }
+
+    function updateRowIndices() {
+        const rows = document.querySelectorAll('.item-row');
+        rows.forEach((r, idx) => {
+            r.querySelector('.row-index').innerText = idx + 1;
+        });
+    }
+
+    // Khi chọn Category trên 1 dòng -> Load đúng sản phẩm thuộc loại đó và thuộc NCC đã chọn (Yêu cầu 3 & 4)
+    function onRowCategoryChange(rowId) {
+        const row = document.getElementById(rowId);
+        const catId = row.querySelector('.row-category').value;
+        const variantSelect = row.querySelector('.row-variant');
+        const supplierId = document.getElementById('mSupplierId').value;
+
+        if (!catId) {
+            variantSelect.innerHTML = '<option value="">-- Vui lòng chọn Loại SP trước --</option>';
+            variantSelect.disabled = true;
+            return;
+        }
+
+        variantSelect.innerHTML = '<option value="">Đang tải sản phẩm...</option>';
+        variantSelect.disabled = true;
+
+        let url = `/Admin/Inventory/GetProductsByCategoryAndSupplier?categoryId=${catId}`;
+        if (supplierId) {
+            url += `&supplierId=${supplierId}`;
+        }
+
+        fetch(url)
+            .then(res => res.json())
+            .then(result => {
+                if (result.success && result.data && result.data.length > 0) {
+                    let opts = '<option value="">-- Chọn sản phẩm & biến thể --</option>';
+                    result.data.forEach(v => {
+                        const detail = (v.colorName ? ` - ${v.colorName}` : '') + (v.volume ? ` (${v.volume})` : '');
+                        opts += `<option value="${v.variantId}" 
+                                         data-product-name="${v.productName}"
+                                         data-sku="${v.sku}"
+                                         data-retail-price="${v.currentRetailPrice}"
+                                         data-original-price="${v.originalPrice}">
+                                    ${v.productName} [${v.sku}]${detail}
+                                 </option>`;
+                    });
+                    variantSelect.innerHTML = opts;
+                    variantSelect.disabled = false;
+                } else {
+                    variantSelect.innerHTML = '<option value="">(Không có sản phẩm nào thuộc loại này do NCC cung cấp)</option>';
+                    variantSelect.disabled = true;
+                }
+            });
+    }
+
+    // Khi chọn biến thể trên 1 dòng
+    function onRowVariantChange(rowId) {
+        const row = document.getElementById(rowId);
+        const variantSelect = row.querySelector('.row-variant');
+        const opt = variantSelect.options[variantSelect.selectedIndex];
+
+        if (variantSelect.selectedIndex <= 0) {
+            row.querySelector('.row-product-info').innerText = '';
+            row.querySelector('.row-current-retail').innerText = '0 đ';
+            return;
+        }
+
+        const sku = opt.getAttribute('data-sku');
+        const retailPrice = parseFloat(opt.getAttribute('data-retail-price') || '0');
+        const originalPrice = parseFloat(opt.getAttribute('data-original-price') || '0');
+
+        row.querySelector('.row-product-info').innerHTML = `<code>SKU: ${sku}</code>`;
+        row.querySelector('.row-current-retail').innerText = retailPrice.toLocaleString('vi-VN') + ' đ';
+        row.querySelector('.row-current-retail').setAttribute('data-price', retailPrice);
+
+        if (originalPrice > 0) {
+            row.querySelector('.row-last-price').innerText = `Gần nhất: ${originalPrice.toLocaleString('vi-VN')}đ`;
+            row.querySelector('.row-price').value = originalPrice;
+        }
+
+        // Tự động gợi ý giá bán lẻ ban đầu nếu chưa có giá mới
+        if (retailPrice > 0) {
+            row.querySelector('.row-new-retail').value = retailPrice;
+        } else {
+            const currentImport = parseFloat(row.querySelector('.row-price').value || '0');
+            row.querySelector('.row-new-retail').value = Math.round(currentImport * 1.3 / 1000) * 1000;
+        }
+
+        calculateRowTotal(rowId);
+    }
+
+    // Tính thành tiền và kiểm tra quan hệ Giá nhập vs Giá bán lẻ (Yêu cầu 10)
+    function calculateRowTotal(rowId) {
+        const row = document.getElementById(rowId);
+        const qty = parseInt(row.querySelector('.row-qty').value || '0');
+        const price = parseFloat(row.querySelector('.row-price').value || '0');
+
+        const total = qty * price;
+        row.querySelector('.row-total').innerText = total.toLocaleString('vi-VN') + ' đ';
+        row.querySelector('.row-total').setAttribute('data-val', total);
+
+        checkPriceMargin(rowId);
+        calculateAllTotals();
+    }
+
+    // KIỂM TRA QUAN HỆ GIÁ NHẬP VÀ GIÁ BÁN (YÊU CẦU 10)
+    function checkPriceMargin(rowId) {
+        const row = document.getElementById(rowId);
+        const importPrice = parseFloat(row.querySelector('.row-price').value || '0');
+        const currentRetail = parseFloat(row.querySelector('.row-current-retail').getAttribute('data-price') || '0');
+        const newRetail = parseFloat(row.querySelector('.row-new-retail').value || '0');
+        const warningBox = row.querySelector('.row-price-warning');
+
+        const effectiveRetail = newRetail > 0 ? newRetail : currentRetail;
+
+        if (importPrice > 0 && effectiveRetail > 0 && importPrice >= effectiveRetail) {
+            warningBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i><strong>Cảnh báo lỗ:</strong> Giá nhập (${importPrice.toLocaleString('vi-VN')}đ) ≥ Giá bán (${effectiveRetail.toLocaleString('vi-VN')}đ)! Vui lòng tăng giá bán mới.`;
+            warningBox.classList.remove('d-none');
+        } else {
+            warningBox.classList.add('d-none');
+        }
+    }
+
+    // Tự động tính giá bán theo % Markup (Yêu cầu 10)
+    function applyMarkup(rowId, markupRate) {
+        const row = document.getElementById(rowId);
+        const importPrice = parseFloat(row.querySelector('.row-price').value || '0');
+        if (importPrice > 0) {
+            const calculatedPrice = Math.round((importPrice * (1 + markupRate)) / 1000) * 1000;
+            row.querySelector('.row-new-retail').value = calculatedPrice;
+            checkPriceMargin(rowId);
+        }
+    }
+
+    // Cập nhật lại sản phẩm trên các dòng khi đổi NCC
+    function refreshAllItemRowProducts() {
+        const rows = document.querySelectorAll('.item-row');
+        rows.forEach(r => {
+            onRowCategoryChange(r.id);
+        });
+    }
+
+    // Tính tổng toàn bộ phiếu nhập
+    function calculateAllTotals() {
+        const rows = document.querySelectorAll('.item-row');
+        let totalQty = 0;
+        let totalAmt = 0;
+
+        rows.forEach(r => {
+            const qty = parseInt(r.querySelector('.row-qty').value || '0');
+            const total = parseFloat(r.querySelector('.row-total').getAttribute('data-val') || '0');
+            totalQty += qty;
+            totalAmt += total;
+        });
+
+        document.getElementById('footerTotalQty').innerText = totalQty + ' sp';
+        document.getElementById('footerTotalAmount').innerText = totalAmt.toLocaleString('vi-VN') + ' đ';
+
+        const validationText = document.getElementById('footerValidationText');
+        const submitBtn = document.getElementById('btnSubmitMultiReceipt');
+        const req1Badge = document.getElementById('req1Badge');
+
+        if (rows.length < 2) {
+            validationText.innerHTML = '<span class="text-danger fw-bold"><i class="bi bi-exclamation-octagon-fill me-1"></i>Chưa đủ điều kiện: Cần tối thiểu 2 mặt hàng (Hiện có: ' + rows.length + ')</span>';
+            req1Badge.className = 'badge bg-danger ms-2';
+            submitBtn.disabled = true;
+        } else {
+            validationText.innerHTML = '<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Hợp lệ: Đã có ' + rows.length + ' mặt hàng khác nhau trong chuyến nhập</span>';
+            req1Badge.className = 'badge bg-success ms-2';
+            submitBtn.disabled = false;
+        }
+    }
+
+    // Mở popup so sánh giá nhập từ các nơi khác (Yêu cầu 9)
+    function openPriceComparisonForRow(rowId) {
+        const row = document.getElementById(rowId);
+        const variantId = row.querySelector('.row-variant').value;
+        if (!variantId) {
+            alert('Vui lòng chọn sản phẩm và biến thể trước khi xem so sánh giá.');
+            return;
+        }
+
+        fetch(`/Admin/Inventory/GetPriceComparison?variantId=${variantId}`)
+            .then(res => res.json())
+            .then(result => {
+                const tbody = document.getElementById('priceComparisonTableBody');
+                tbody.innerHTML = '';
+                if (result.success && result.data && result.data.length > 0) {
+                    result.data.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>
+                                <strong class="text-dark">${item.supplierName}</strong>
+                                ${item.supplierPhone ? `<div class="small text-muted"><i class="bi bi-telephone me-1"></i>${item.supplierPhone}</div>` : ''}
+                            </td>
+                            <td>
+                                <div class="fw-semibold">${item.productName}</div>
+                                <small class="text-muted"><code>${item.sku}</code> ${item.colorName || ''} ${item.volume || ''}</small>
+                            </td>
+                            <td class="text-end fw-bold text-success fs-6">
+                                ${Number(item.importPrice).toLocaleString('vi-VN')} đ
+                            </td>
+                            <td class="small text-muted">
+                                <span class="badge bg-light text-secondary border">${item.sourceType}</span>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted fst-italic">Chưa có dữ liệu so sánh giá từ các nhà cung cấp khác cho sản phẩm này.</td></tr>';
+                }
+                new bootstrap.Modal(document.getElementById('priceComparisonModal')).show();
+            });
+    }
+
+    // =========================================================================
+    // LƯU PHIẾU NHẬP NHIỀU SẢN PHẨM (SUBMIT VIA AJAX)
+    // =========================================================================
+    function submitMultiItemReceipt() {
+        const rows = document.querySelectorAll('.item-row');
+        const alertBox = document.getElementById('mValidationAlert');
+        alertBox.classList.add('d-none');
+
+        // KIỂM TRA YÊU CẦU 1: TỐI THIỂU 2 SẢN PHẨM
+        if (rows.length < 2) {
+            alertBox.innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i><strong>Quy định quản lý nhập hàng:</strong> Một phiếu nhập phải bao gồm từ 2 sản phẩm trở lên (không được phép lập phiếu chỉ có 1 sản phẩm). Vui lòng thêm các mặt hàng khác trong cùng chuyến nhập.';
+            alertBox.classList.remove('d-none');
+            return;
+        }
+
+        const supplierSelect = document.getElementById('mSupplierId');
+        if (supplierSelect.selectedIndex <= 0) {
+            alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>Vui lòng chọn Nhà cung cấp đối tác cung ứng hàng.';
+            alertBox.classList.remove('d-none');
+            return;
+        }
+
+        const storeId = parseInt(document.getElementById('mStoreId').value || '1');
+        const receiptType = document.querySelector('input[name="modalReceiptType"]:checked').value;
+        const importPortId = receiptType === 'Import' ? parseInt(document.getElementById('mImportPortId').value || '0') : null;
+        const customsDeclarationNumber = document.getElementById('mCustomsDeclarationNumber').value;
+        const supplierId = parseInt(supplierSelect.value);
+        const supplierName = supplierSelect.options[supplierSelect.selectedIndex].getAttribute('data-name');
+        const originCountry = document.getElementById('mOriginCountry').value;
+        const invoiceNumber = document.getElementById('mInvoiceNumber').value;
+        const importDate = document.getElementById('mImportDate').value;
+        const paymentStatus = document.getElementById('mPaymentStatus').value;
+        const paidAmount = parseFloat(document.getElementById('mPaidAmount').value || '0');
+        const note = document.getElementById('mNote').value;
+
+        // Thu thập các dòng sản phẩm
+        const items = [];
+        const variantIdsSet = new Set();
+
+        for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            const vId = parseInt(r.querySelector('.row-variant').value || '0');
+            const qty = parseInt(r.querySelector('.row-qty').value || '0');
+            const price = parseFloat(r.querySelector('.row-price').value || '0');
+            const newRetail = parseFloat(r.querySelector('.row-new-retail').value || '0');
+
+            if (!vId) {
+                alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>Dòng thứ #${i+1} chưa chọn sản phẩm / biến thể.`;
+                alertBox.classList.remove('d-none');
+                return;
+            }
+            if (qty <= 0) {
+                alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>Dòng thứ #${i+1} có số lượng nhập không hợp lệ.`;
+                alertBox.classList.remove('d-none');
+                return;
+            }
+            if (price <= 0) {
+                alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>Dòng thứ #${i+1} có đơn giá nhập không hợp lệ.`;
+                alertBox.classList.remove('d-none');
+                return;
+            }
+
+            variantIdsSet.add(vId);
+            items.push({
+                variantId: vId,
+                quantity: qty,
+                importPrice: price,
+                newRetailPrice: newRetail > 0 ? newRetail : null
+            });
+        }
+
+        if (variantIdsSet.size < 2) {
+            alertBox.innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i>Một lần nhập phải gồm từ 2 sản phẩm/biến thể khác nhau trở lên theo đúng thực tế nhập hàng theo nhãn hiệu.';
+            alertBox.classList.remove('d-none');
+            return;
+        }
+
+        const payload = {
+            storeId: storeId,
+            receiptType: receiptType,
+            importPortId: importPortId,
+            customsDeclarationNumber: customsDeclarationNumber,
+            supplierId: supplierId,
+            supplierName: supplierName,
+            originCountry: originCountry,
+            invoiceNumber: invoiceNumber,
+            importDate: importDate,
+            paymentStatus: paymentStatus,
+            paidAmount: paidAmount,
+            note: note,
+            items: items
+        };
+
+        const submitBtn = document.getElementById('btnSubmitMultiReceipt');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang lưu phiếu nhập...';
+
+        fetch('/Admin/Inventory/CreateMultiReceipt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                bootstrap.Modal.getInstance(document.getElementById('multiImportModal')).hide();
+                window.location.reload();
+            } else {
+                alertBox.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i>${res.message || 'Lỗi khi lưu phiếu nhập.'}`;
+                alertBox.classList.remove('d-none');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Lưu và nhập kho toàn bộ';
+            }
+        })
+        .catch(err => {
+            alertBox.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i>Lỗi kết nối máy chủ.';
+            alertBox.classList.remove('d-none');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Lưu và nhập kho toàn bộ';
+        });
+    }
+
+    // =========================================================================
+    // XEM CHI TIẾT PHIẾU NHẬP
+    // =========================================================================
+    function viewReceiptDetail(receiptId) {
+        fetch(`/Admin/Inventory/GetReceiptDetail?id=${receiptId}`)
+            .then(res => res.json())
+            .then(result => {
+                if (!result.success) {
+                    alert(result.message || 'Lỗi khi tải chi tiết phiếu nhập.');
+                    return;
+                }
+                const d = result.data;
+                document.getElementById('dt-receiptCode').innerText = d.receiptCode;
+                document.getElementById('dt-receiptTypeLabel').innerHTML = d.receiptType === 'Import' 
+                    ? '<span class="badge bg-warning-subtle text-warning fs-6 px-3 py-1"><i class="bi bi-globe-americas me-1"></i>Nhập khẩu quốc tế</span>'
+                    : '<span class="badge bg-info-subtle text-info fs-6 px-3 py-1"><i class="bi bi-house-door me-1"></i>Nhập trong nước</span>';
+                
+                document.getElementById('dt-origin').innerText = `Xuất xứ: ${d.originCountry || 'Việt Nam'}`;
+                document.getElementById('dt-portInfo').innerText = d.receiptType === 'Import' && d.portName ? `Thông quan: ${d.portName} (${d.portType})` : '';
+                document.getElementById('dt-customs').innerText = d.customsDeclarationNumber && d.customsDeclarationNumber !== '—' ? `Tờ khai / Vận đơn: ${d.customsDeclarationNumber}` : '';
+                
+                document.getElementById('dt-supplier').innerText = d.supplier;
+                document.getElementById('dt-supplierAddress').innerHTML = d.supplierAddress && d.supplierAddress !== '—' ? `<i class="bi bi-geo-alt me-1"></i>${d.supplierAddress}` : '';
+                document.getElementById('dt-supplierPhone').innerText = d.supplierPhone && d.supplierPhone !== '—' ? `Hotline: ${d.supplierPhone}` : '';
+                document.getElementById('dt-invoice').innerText = d.invoiceNumber && d.invoiceNumber !== '—' ? `Hóa đơn VAT: ${d.invoiceNumber}` : '';
+
+                document.getElementById('dt-storeName').innerText = d.storeName;
+                document.getElementById('dt-storeMeta').innerText = `${d.storeAddress} — ${d.storeProvince} (${d.storeRegion} / ${d.storeType})`;
+                
+                if (d.storeId === 1) {
+                    document.getElementById('dt-transferLinkContainer').innerHTML = `
+                        <a href="/Admin/Transfers/Create?sourceStoreId=1&targetStoreId=5" class="btn btn-sm btn-outline-warning w-100 fw-bold">
+                            <i class="bi bi-truck me-1"></i> Chuyển sang kho Tây Nam Bộ (Cần Thơ)
+                        </a>
+                    `;
+                } else {
+                    document.getElementById('dt-transferLinkContainer').innerHTML = '';
+                }
+
+                // Render danh sách mặt hàng
+                const tbody = document.getElementById('dt-itemsTableBody');
+                tbody.innerHTML = '';
+                if (d.items && d.items.length > 0) {
+                    d.items.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-3 py-2">
+                                <div class="fw-bold text-dark">${item.productName}</div>
+                                <div class="small text-muted"><code>${item.sku}</code> ${item.colorName ? '| Màu: ' + item.colorName : ''} ${item.volume ? '| ' + item.volume : ''}</div>
+                            </td>
+                            <td class="py-2 text-center fw-bold text-success">+${item.quantity}</td>
+                            <td class="py-2 text-end">${Number(item.importPrice).toLocaleString('vi-VN')} đ</td>
+                            <td class="py-2 text-end fw-bold text-dark">${Number(item.totalPrice).toLocaleString('vi-VN')} đ</td>
+                            <td class="py-2 text-end text-primary">${item.newRetailPrice ? Number(item.newRetailPrice).toLocaleString('vi-VN') + ' đ' : '—'}</td>
+                            <td class="py-2 px-3 text-end fw-bold text-success">${item.currentRetailPrice ? Number(item.currentRetailPrice).toLocaleString('vi-VN') + ' đ' : '—'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                document.getElementById('dt-totalAmount').innerText = Number(d.totalAmount).toLocaleString('vi-VN') + ' đ';
+                document.getElementById('dt-paidAmount').innerText = Number(d.paidAmount).toLocaleString('vi-VN') + ' đ';
+                document.getElementById('dt-debtAmount').innerText = Number(d.debtAmount).toLocaleString('vi-VN') + ' đ';
+                document.getElementById('dt-importDate').innerText = d.importDate;
+                document.getElementById('dt-createdByName').innerText = d.createdByName;
+                document.getElementById('dt-note').innerText = d.note;
+
+                new bootstrap.Modal(document.getElementById('receiptDetailModal')).show();
+            })
+            .catch(err => {
+                alert('Không thể kết nối đến máy chủ.');
+            });
+    }
+
+    // =========================================================================
+    // THANH TOÁN CÔNG NỢ
+    // =========================================================================
+    function openPaymentModal(receiptId, receiptCode, currentDebt, supplierName) {
+        document.getElementById('payModalReceiptId').value = receiptId;
+        document.getElementById('payModalReceiptCode').innerText = receiptCode;
+        document.getElementById('payModalSupplier').innerText = supplierName || '—';
+        document.getElementById('payModalCurrentDebt').innerText = Number(currentDebt).toLocaleString('vi-VN') + ' đ';
+        document.getElementById('payModalAmount').value = currentDebt;
+        document.getElementById('payModalAmount').max = currentDebt;
+
+        new bootstrap.Modal(document.getElementById('paymentModal')).show();
+    }
+</script>
+}

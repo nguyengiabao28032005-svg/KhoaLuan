@@ -1,0 +1,580 @@
+@model List<BeautyShop.ViewModels.CartItemViewModel>
+
+@{
+    ViewData["Title"] = "Giỏ hàng của bạn";
+    decimal total = Model?.Sum(x => x.Total) ?? 0;
+}
+
+@section Styles {
+    <style>
+        .cart-header-section {
+            background: linear-gradient(135deg, #006E4A, #009665);
+            border-radius: 16px;
+            padding: 24px 32px;
+            color: #fff;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+            .cart-header-section i {
+                font-size: 2.5rem;
+                opacity: 0.9;
+            }
+
+            .cart-header-section h2 {
+                margin: 0;
+                font-size: 1.6rem;
+                font-weight: 900;
+            }
+
+            .cart-header-section p {
+                margin: 0;
+                opacity: 0.8;
+                font-size: 14px;
+            }
+
+        .cart-table-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            border: 1.5px solid #edf2f7;
+            overflow: hidden;
+        }
+
+        .cart-table thead th {
+            background: #f4f6f9;
+            font-weight: 800;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #718096;
+            padding: 14px 20px;
+            border-bottom: 2px solid #edf2f7;
+            border-top: none;
+        }
+
+        .cart-table tbody td {
+            padding: 18px 20px;
+            vertical-align: middle;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .cart-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .cart-table tbody tr:hover {
+            background: #fafbff;
+        }
+
+        .cart-product-img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1.5px solid #edf2f7;
+        }
+
+        .cart-product-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: #2d3748;
+            margin-bottom: 4px;
+            text-decoration: none;
+            display: block;
+        }
+
+            .cart-product-name:hover {
+                color: #006E4A;
+            }
+
+        /* ===== FIX QTY CONTROL ===== */
+        .qty-wrap {
+            display: inline-flex;
+            align-items: center;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+            width: 120px;
+        }
+
+            .qty-wrap button {
+                background: #f4f6f9;
+                border: none;
+                width: 36px;
+                height: 38px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1rem;
+                color: #2d3748;
+                cursor: pointer;
+                transition: all 0.2s;
+                flex-shrink: 0;
+            }
+
+                .qty-wrap button:hover {
+                    background: #006E4A;
+                    color: #fff;
+                }
+
+            .qty-wrap .input-cart-qty {
+                width: 46px !important;
+                height: 38px !important;
+                border: none !important;
+                border-left: 1px solid #edf2f7 !important;
+                border-right: 1px solid #edf2f7 !important;
+                text-align: center !important;
+                font-size: 0.95rem !important;
+                font-weight: 800 !important;
+                color: #1a1a2e !important;
+                background: #fff !important;
+                outline: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                font-family: 'Nunito', sans-serif !important;
+                display: block !important;
+            }
+        /* Override Bootstrap readonly style */
+        input[readonly].input-cart-qty {
+            background-color: #fff !important;
+            opacity: 1 !important;
+        }
+
+        .btn-remove-item {
+            background: transparent;
+            border: none;
+            color: #a0aec0;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+        }
+
+            .btn-remove-item:hover {
+                background: #fff1f0;
+                color: #e53935;
+            }
+
+        /* ===== SUMMARY PANEL ===== */
+        .summary-panel {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.09);
+            border: 1.5px solid #edf2f7;
+            position: sticky;
+            top: 90px;
+            overflow: hidden;
+        }
+
+        .summary-panel-header {
+            background: linear-gradient(135deg, #006E4A, #009665);
+            color: #fff;
+            padding: 18px 24px;
+            font-weight: 900;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .summary-panel-body {
+            padding: 24px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed #edf2f7;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+            .summary-row:last-of-type {
+                border-bottom: none;
+            }
+
+            .summary-row .lbl {
+                color: #718096;
+            }
+
+            .summary-row .val {
+                color: #2d3748;
+                font-weight: 700;
+            }
+
+            .summary-row.total-row {
+                padding-top: 14px;
+            }
+
+                .summary-row.total-row .lbl {
+                    color: #1a1a2e;
+                    font-size: 1rem;
+                    font-weight: 800;
+                }
+
+                .summary-row.total-row .val {
+                    color: #e53935;
+                    font-size: 1.5rem;
+                    font-weight: 900;
+                }
+
+        .btn-checkout-main {
+            background: linear-gradient(135deg, #006E4A, #009665);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            width: 100%;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+            margin-top: 18px;
+        }
+
+            .btn-checkout-main:hover {
+                background: linear-gradient(135deg, #003d29, #006E4A);
+                color: #fff;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(0,110,74,0.3);
+            }
+
+        .btn-continue {
+            text-decoration: none;
+            color: #006E4A;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+            .btn-continue:hover {
+                color: #009665;
+            }
+
+        .promo-input {
+            border: 1.5px solid #e2e8f0;
+            border-right: none;
+            border-radius: 10px 0 0 10px;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+            flex: 1;
+            font-family: 'Nunito', sans-serif;
+        }
+
+            .promo-input:focus {
+                border-color: #009665;
+            }
+
+        .promo-btn {
+            background: #006E4A;
+            color: #fff;
+            border: none;
+            border-radius: 0 10px 10px 0;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+            .promo-btn:hover {
+                background: #003d29;
+            }
+
+        .free-ship-bar {
+            background: linear-gradient(135deg, #e6f5ef, #f0fdf4);
+            border: 1.5px solid #4db88a;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #006E4A;
+        }
+
+            .free-ship-bar.warn {
+                background: linear-gradient(135deg, #fff8e1, #fffde7);
+                border-color: #fbbf24;
+                color: #92400e;
+            }
+    </style>
+}
+
+<div class="py-2">
+
+    <!-- HEADER -->
+    <div class="cart-header-section">
+        <i class="bi bi-cart3"></i>
+        <div>
+            <h2>Giỏ hàng của bạn</h2>
+            <p>Kiểm tra và hoàn tất đơn hàng</p>
+        </div>
+    </div>
+
+    @if (Model == null || !Model.Any())
+    {
+        <div style="background:#fff;border-radius:20px;padding:70px 40px;text-align:center;border:1.5px solid #edf2f7;box-shadow:0 2px 16px rgba(0,0,0,0.05);">
+            <i class="bi bi-cart-x" style="font-size:5rem;color:#e2e8f0;"></i>
+            <h4 class="fw-800 mb-2 mt-4" style="color:#2d3748;">Giỏ hàng đang trống</h4>
+            <p class="text-muted mb-4">Cùng khám phá hàng ngàn sản phẩm làm đẹp chính hãng nhé!</p>
+            <a asp-controller="Product" asp-action="Index" class="btn btn-hasaki rounded-pill px-5 py-3 fw-800" style="font-size:15px;" id="cart-go-shopping">
+                <i class="bi bi-bag-heart me-2"></i>Bắt đầu mua sắm
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+
+            <!-- CART TABLE -->
+            <div class="col-lg-8">
+                <div class="cart-table-card">
+                    <table class="table cart-table mb-0">
+                        <thead>
+                            <tr>
+                                <th style="min-width:260px;">Sản phẩm</th>
+                                <th class="text-center">Đơn giá</th>
+                                <th class="text-center">Số lượng</th>
+                                <th class="text-end">Thành tiền</th>
+                                <th class="text-center" style="width:50px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <img src="@(string.IsNullOrEmpty(item.ImageUrl) ? "/images/no-image.png" : item.ImageUrl)"
+                                                 class="cart-product-img" alt="@item.ProductName" />
+                                            <div>
+                                                <a href="#" class="cart-product-name">@item.ProductName</a>
+                                                <div class="text-muted" style="font-size:12px;font-weight:600;">
+                                                    <i class="bi bi-shield-check text-success me-1"></i>Chính hãng · Còn hàng
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center fw-700" style="color:#2d3748;">
+                                        @item.Price.ToString("N0")đ
+                                    </td>
+                                    <td class="text-center">
+                                        <!-- QTY CONTROL ĐÃ FIX -->
+                                        <div class="qty-wrap mx-auto">
+                                            <button class="btn-cart-minus" data-id="@item.ProductId" type="button">
+                                                <i class="bi bi-dash"></i>
+                                            </button>
+                                            <input type="text"
+                                                   class="input-cart-qty"
+                                                   value="@item.Quantity"
+                                                   readonly
+                                                   style="width:46px;height:38px;border:none;border-left:1px solid #edf2f7;border-right:1px solid #edf2f7;text-align:center;font-size:0.95rem;font-weight:800;color:#1a1a2e;background:#fff;outline:none;padding:0;display:block;" />
+                                            <button class="btn-cart-plus" data-id="@item.ProductId" type="button">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="text-end fw-800 item-total-price" style="color:#e53935;font-size:1.05rem;">
+                                        @item.Total.ToString("N0")đ
+                                    </td>
+                                    <td class="text-center">
+                                        <a asp-action="Remove" asp-route-productId="@item.ProductId"
+                                           class="btn-remove-item" title="Xóa sản phẩm">
+                                            <i class="bi bi-trash3"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 px-1">
+                    <a asp-controller="Product" asp-action="Index" class="btn-continue" id="cart-continue">
+                        <i class="bi bi-arrow-left me-1"></i>Tiếp tục mua sắm
+                    </a>
+                    <span class="text-muted" style="font-size:13px;font-weight:600;">
+                        <i class="bi bi-shield-check text-success me-1"></i>Thanh toán an toàn & bảo mật
+                    </span>
+                </div>
+            </div>
+
+            <!-- ORDER SUMMARY -->
+            <div class="col-lg-4">
+                <div class="summary-panel">
+                    <div class="summary-panel-header">
+                        <i class="bi bi-receipt"></i>
+                        Tóm tắt đơn hàng
+                    </div>
+                    <div class="summary-panel-body">
+
+                        <!-- Free ship bar -->
+                        @{
+                            decimal freeShipThreshold = 299000;
+                            decimal remaining = freeShipThreshold - total;
+                        }
+                        @if (total >= freeShipThreshold)
+                        {
+                            <div class="free-ship-bar">
+                                <i class="bi bi-truck-front-fill fs-5"></i>
+                                <span>Bạn được <strong>miễn phí vận chuyển!</strong></span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="free-ship-bar warn">
+                                <i class="bi bi-truck fs-5" style="color:#f59e0b;"></i>
+                                <span>Mua thêm <strong>@remaining.ToString("N0")đ</strong> để được miễn phí ship</span>
+                            </div>
+                        }
+
+                        <div class="summary-row">
+                            <span class="lbl">Tạm tính (<span class="cart-total-quantity">@Model.Sum(x => x.Quantity)</span> sản phẩm):</span>
+                            <span class="val cart-subtotal">@total.ToString("N0")đ</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="lbl">Phí vận chuyển:</span>
+                            <span class="fw-700 text-success">Miễn phí</span>
+                        </div>
+                        <div class="summary-row total-row">
+                            <span class="lbl">Tổng cộng:</span>
+                            <div class="text-end">
+                                <span class="val cart-grandtotal d-block">@total.ToString("N0")đ</span>
+                                <small class="text-muted fw-600" style="font-size:11px;">(Đã bao gồm VAT)</small>
+                            </div>
+                        </div>
+
+                        <!-- Promo code -->
+                        <div class="mt-3 mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0" style="font-size:13px;font-weight:700;color:#718096;">Mã giảm giá</label>
+                                <a asp-controller="Voucher" asp-action="Index" style="font-size:12px;font-weight:700;color:#006E4A;text-decoration:none;">
+                                    <i class="bi bi-ticket-perforated me-1"></i>Săn Voucher
+                                </a>
+                            </div>
+                            <div class="d-flex">
+                                <input type="text" class="promo-input" placeholder="Nhập mã..." id="promo-code-input" style="text-transform:uppercase;" />
+                                <button class="promo-btn" id="apply-promo" type="button">Áp dụng</button>
+                            </div>
+                        </div>
+
+                        <a asp-controller="Checkout" asp-action="Index" class="btn-checkout-main" id="btn-go-checkout">
+                            <i class="bi bi-lightning-charge-fill"></i>
+                            Tiến hành đặt hàng
+                        </a>
+
+                        <!-- Payment icons -->
+                        <div class="text-center mt-4">
+                            <div class="text-muted mb-2" style="font-size:12px;font-weight:600;">Chấp nhận thanh toán</div>
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                <span style="background:#f4f6f9;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;color:#2d3748;">COD</span>
+                                <span style="background:#f4f6f9;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;color:#2d3748;">MOMO</span>
+                                <span style="background:#f4f6f9;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;color:#2d3748;">QR Bank</span>
+                                <span style="background:#f4f6f9;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;color:#2d3748;">Visa</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $(document).on('click', '.btn-cart-minus', function() {
+                var input = $(this).siblings('.input-cart-qty');
+                var productId = $(this).data('id');
+                var val = parseInt(input.val()) || 1;
+                if (val > 1) {
+                    input.val(val - 1);
+                    updateCart(productId, val - 1, $(this));
+                }
+            });
+            $(document).on('click', '.btn-cart-plus', function() {
+                var input = $(this).siblings('.input-cart-qty');
+                var productId = $(this).data('id');
+                var val = parseInt(input.val()) || 1;
+                input.val(val + 1);
+                updateCart(productId, val + 1, $(this));
+            });
+            function updateCart(productId, quantity, el) {
+                $.ajax({
+                    url: '/Cart/UpdateQuantity', type: 'POST',
+                    data: { productId: productId, quantity: quantity },
+                    success: function(res) {
+                        if (res.success) {
+                            el.closest('tr').find('.item-total-price').text(res.itemTotal.toLocaleString('vi-VN') + 'đ');
+                            $('.cart-total-quantity').text(res.totalQuantity);
+                            $('.cart-subtotal').text(res.cartTotal.toLocaleString('vi-VN') + 'đ');
+                            $('.cart-grandtotal').text(res.cartTotal.toLocaleString('vi-VN') + 'đ');
+                        } else {
+                            alert(res.message || 'Có lỗi xảy ra!');
+                        }
+                    },
+                    error: function() { alert('Không thể kết nối máy chủ.'); }
+                });
+            }
+            var initialTotal = @total;
+            var currentTotal = initialTotal;
+
+            $('#apply-promo').on('click', function() {
+                var code = $('#promo-code-input').val().trim();
+                if (!code) return;
+                
+                // Gọi API ApplyVoucher bên CheckoutController
+                $.post('/Checkout/ApplyVoucher', { code: code, total: currentTotal }, function(res) {
+                    if (res.success) {
+                        if (window.showToast) window.showToast('Mã hợp lệ! Đã được ghi nhận cho bước thanh toán.', 'success');
+                        localStorage.setItem('AppliedVoucher', code);
+                        
+                        // Cập nhật UI tạm thời
+                        var newTotal = currentTotal - res.discount;
+                        if (newTotal < 0) newTotal = 0;
+                        $('.cart-grandtotal').text(newTotal.toLocaleString('vi-VN') + 'đ');
+                        
+                        // Nếu có dòng giảm giá, hiển thị thêm
+                        if ($('#cart-discount-row').length === 0) {
+                            $('.total-row').before(`
+                                <div class="summary-row" id="cart-discount-row">
+                                    <span class="lbl">Giảm giá:</span>
+                                    <span class="fw-700 text-danger" id="cart-discount-val">-${res.discount.toLocaleString('vi-VN')}đ</span>
+                                </div>
+                            `);
+                        } else {
+                            $('#cart-discount-val').text('-' + res.discount.toLocaleString('vi-VN') + 'đ');
+                        }
+                    } else {
+                        if (window.showToast) window.showToast(res.message, 'warning');
+                        localStorage.removeItem('AppliedVoucher');
+                        $('#cart-discount-row').remove();
+                        $('.cart-grandtotal').text(currentTotal.toLocaleString('vi-VN') + 'đ');
+                    }
+                }).fail(function() {
+                    if (window.showToast) window.showToast('Lỗi kết nối máy chủ.', 'error');
+                });
+            });
+        });
+    </script>
+}

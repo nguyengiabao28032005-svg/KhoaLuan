@@ -1,0 +1,150 @@
+@model IEnumerable<BeautyShop.Models.TransferRoute>
+@{
+    ViewData["Title"] = "Quản lý Lộ trình vận chuyển (Tuyến đường chuẩn)";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">
+            <i class="bi bi-signpost-split-fill text-primary me-2"></i>Quản lý Lộ trình vận chuyển (Tuyến đường chuẩn)
+        </h2>
+        <p class="text-muted mb-0">Cấu hình danh mục tuyến đường luân chuyển hợp lệ, khoảng cách, thời gian và trạm trung chuyển (Hub) bắt buộc</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-sm btn-outline-primary fw-bold px-3 py-2 rounded-3 shadow-sm bg-white">
+            <i class="bi bi-file-earmark-text-fill me-1"></i> Bảng Phiếu chuyển kho
+        </a>
+        <a asp-action="Create" class="btn btn-sm btn-primary fw-bold px-3 py-2 rounded-3 shadow-sm">
+            <i class="bi bi-plus-circle-fill me-1"></i> Lập Phiếu chuyển mới
+        </a>
+    </div>
+</div>
+
+<!-- BANNER PHÂN BIỆT NGHIỆP VỤ -->
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-4" style="background:#eff6ff; border-left:5px solid #2563eb !important;">
+    <div class="d-flex align-items-start gap-3">
+        <i class="bi bi-info-circle-fill text-primary fs-4 mt-1"></i>
+        <div>
+            <span class="fw-bold text-dark fs-6">Phân biệt giữa "Lộ trình vận chuyển" và "Phiếu chuyển kho":</span>
+            <ul class="mb-0 mt-1 ps-3 small text-secondary">
+                <li><strong>Lộ trình vận chuyển (trang này):</strong> Định nghĩa cấu hình mạng lưới logistics (tuyến đi từ kho A đến kho B, khoảng cách cự ly km, thời gian dự kiến, yêu cầu qua Hub). Đây là danh mục quy chuẩn, không gắn với lô hàng cụ thể.</li>
+                <li><strong>Phiếu chuyển kho:</strong> Chứng từ luân chuyển thực tế khi có hàng hóa cụ thể (sản phẩm, số lượng, ngày chuyển, người tạo, người nhận và kho đang lưu giữ hàng).</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>@TempData["SuccessMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>@TempData["ErrorMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4 small fw-bold" style="width:60px;">STT</th>
+                    <th class="small fw-bold">Kho xuất phát</th>
+                    <th class="small fw-bold text-center" style="width:50px;"><i class="bi bi-arrow-right"></i></th>
+                    <th class="small fw-bold">Kho đích đến</th>
+                    <th class="small fw-bold">Hình thức tuyến / Trung chuyển</th>
+                    <th class="small fw-bold text-center" style="width:140px;">Cự ly / Thời gian</th>
+                    <th class="small fw-bold text-center" style="width:140px;">Trạng thái</th>
+                    <th class="pe-4 small fw-bold text-end" style="width:120px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    int idx = 1;
+                    foreach (var route in Model)
+                    {
+                        <tr>
+                            <td class="ps-4 text-muted fw-bold">@idx</td>
+                            <td>
+                                <div class="fw-bold text-dark">@route.FromStore?.Name</div>
+                                <small class="text-muted">[@(route.FromStore?.Region ?? "—")] @route.FromStore?.ProvinceName</small>
+                            </td>
+                            <td class="text-center text-muted">
+                                <i class="bi bi-arrow-right text-primary"></i>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark">@route.ToStore?.Name</div>
+                                <small class="text-muted">[@(route.ToStore?.Region ?? "—")] @route.ToStore?.ProvinceName</small>
+                            </td>
+                            <td>
+                                @if (route.TransitStoreId.HasValue)
+                                {
+                                    <span class="badge px-3 py-2 rounded-pill fw-bold" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a;">
+                                        <i class="bi bi-diagram-3-fill me-1"></i> Qua Hub: @route.TransitStore?.Name
+                                    </span>
+                                    <div class="small text-muted mt-1">@route.Description</div>
+                                }
+                                else
+                                {
+                                    <span class="badge px-3 py-2 rounded-pill fw-bold" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;">
+                                        <i class="bi bi-arrow-right-circle me-1"></i> Trực tiếp (Direct)
+                                    </span>
+                                    @if (!string.IsNullOrEmpty(route.Description))
+                                    {
+                                        <div class="small text-muted mt-1">@route.Description</div>
+                                    }
+                                }
+                            </td>
+                            <td class="text-center">
+                                <div class="fw-semibold text-dark">@(route.DistanceKm.HasValue ? $"{route.DistanceKm.Value:N0} km" : "—")</div>
+                                <small class="text-muted">@(route.EstimatedHours.HasValue ? $"~{route.EstimatedHours.Value:N1} giờ" : "—")</small>
+                            </td>
+                            <td class="text-center">
+                                @if (route.IsActive)
+                                {
+                                    <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold border border-success-subtle">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Đang mở
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill fw-bold border border-danger-subtle">
+                                        <i class="bi bi-slash-circle-fill me-1"></i> Tạm dừng
+                                    </span>
+                                }
+                            </td>
+                            <td class="pe-4 text-end">
+                                <form asp-action="ToggleRoute" asp-route-id="@route.Id" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn thay đổi trạng thái tuyến này?');">
+                                    @if (route.IsActive)
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-bold rounded-3" title="Tạm dừng tuyến">
+                                            <i class="bi bi-toggle-on fs-6 me-1"></i> Tắt
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-success fw-bold rounded-3" title="Mở lại tuyến">
+                                            <i class="bi bi-toggle-off fs-6 me-1"></i> Mở
+                                        </button>
+                                    }
+                                </form>
+                            </td>
+                        </tr>
+                        idx++;
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,321 @@
+@model BeautyShop.Models.Consultation
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = $"Chi tiết lịch tư vấn #CS-{Model.Id:D4}";
+
+    var employees = ViewBag.Employees as List<BeautyShop.Models.User> ?? new List<BeautyShop.Models.User>();
+    var isAdmin = (bool)(ViewBag.IsAdmin ?? false);
+
+    string GetBdgClass(string status) => status switch
+    {
+        "Chờ xác nhận" => "bdg-yellow",
+        "Đã xác nhận" => "bdg-blue",
+        "Đã phân công" => "bdg-purple",
+        "Đang tư vấn" => "bdg-blue",
+        "Đã hoàn thành" => "bdg-green",
+        "Đã hủy" => "bdg-red",
+        _ => "bdg-gray"
+    };
+}
+
+<!-- Page Header -->
+<div class="page-hdr">
+    <div>
+        <h2>
+            <i class="bi bi-calendar2-check text-success"></i>
+            Chi tiết lịch tư vấn #CS-@Model.Id.ToString("D4")
+            <span class="bdg @GetBdgClass(Model.Status) ms-2 fs-6">@Model.Status</span>
+        </h2>
+        <div class="ph-sub">Đăng ký vào lúc: @Model.CreatedAt.ToString("HH:mm dd/MM/yyyy") | Cập nhật lần cuối: @Model.UpdatedAt.ToString("HH:mm dd/MM/yyyy")</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="UpdateResult" asp-route-id="@Model.Id" class="btn-ap">
+            <i class="bi bi-pencil-square"></i> Cập nhật kết quả tư vấn
+        </a>
+        <a asp-action="Index" class="btn-as">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<!-- Alerts -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert-ok mb-4 d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>@TempData["SuccessMessage"]</span>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert-err mb-4 d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <span>@TempData["ErrorMessage"]</span>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- Cột trái: Thông tin lịch & Kết quả -->
+    <div class="col-lg-8">
+        <!-- Thông tin buổi tư vấn -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5><i class="bi bi-info-circle"></i> Thông tin buổi tư vấn</h5>
+            </div>
+            <div class="admin-card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <div class="f-label">Dịch vụ tư vấn</div>
+                            <div class="fw-bold text-dark fs-5 text-success">
+                                <i class="bi bi-tag-fill me-1"></i>@Model.ConsultationType
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <div class="f-label">Thời gian hẹn</div>
+                            <div class="fw-bold text-dark fs-5">
+                                <i class="bi bi-calendar-event me-1 text-success"></i>@Model.AppointmentDate.ToString("dd/MM/yyyy")
+                            </div>
+                            <div class="text-muted small">
+                                <i class="bi bi-clock me-1"></i>@Model.StartTime.ToString(@"hh\:mm") - @Model.EndTime.ToString(@"hh\:mm")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yêu cầu từ khách hàng -->
+                <div class="mb-3">
+                    <div class="f-label">Nội dung khách hàng yêu cầu / Tình trạng da:</div>
+                    <div class="p-3 rounded-3 bg-light border text-dark" style="white-space: pre-line;">
+                        @(string.IsNullOrWhiteSpace(Model.CustomerNote) ? "Khách hàng không để lại ghi chú cụ thể." : Model.CustomerNote)
+                    </div>
+                </div>
+
+                <!-- Ghi chú nội bộ -->
+                @if (!string.IsNullOrWhiteSpace(Model.EmployeeNote))
+                {
+                    <div class="mb-3">
+                        <div class="f-label text-primary">Ghi chú của nhân viên tư vấn:</div>
+                        <div class="p-3 rounded-3 bg-light border border-primary text-dark" style="white-space: pre-line;">
+                            @Model.EmployeeNote
+                        </div>
+                    </div>
+                }
+
+                <!-- Kết quả tư vấn -->
+                <div>
+                    <div class="f-label text-success">Kết quả tư vấn & Giải pháp:</div>
+                    @if (!string.IsNullOrWhiteSpace(Model.ConsultationResult))
+                    {
+                        <div class="p-3 rounded-3 bg-success bg-opacity-10 border border-success text-dark" style="white-space: pre-line; line-height: 1.6;">
+                            @Model.ConsultationResult
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 rounded-3 bg-light text-muted fst-italic border">
+                            Chưa có kết quả tư vấn được ghi nhận. Nhấn <strong>"Cập nhật kết quả tư vấn"</strong> để thêm kết quả sau buổi tư vấn.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Sản phẩm đề xuất -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5><i class="bi bi-bag-check"></i> Sản phẩm đề xuất cho khách hàng (@(Model.ConsultationProducts?.Count ?? 0))</h5>
+                <a asp-action="UpdateResult" asp-route-id="@Model.Id" class="btn-ae sm">
+                    <i class="bi bi-plus-lg"></i> Quản lý sản phẩm đề xuất
+                </a>
+            </div>
+            <div class="admin-card-body p-0">
+                @if (Model.ConsultationProducts != null && Model.ConsultationProducts.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Sản phẩm</th>
+                                    <th>Giá niêm yết</th>
+                                    <th>Hướng dẫn dùng / Liều lượng</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var cp in Model.ConsultationProducts)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <img src="@(string.IsNullOrEmpty(cp.Product?.ThumbnailUrl) ? "/images/no-image.png" : cp.Product.ThumbnailUrl)"
+                                                     alt="@cp.Product?.Name"
+                                                     class="rounded-3 border"
+                                                     style="width: 48px; height: 48px; object-fit: cover;" />
+                                                <div>
+                                                    <div class="fw-bold text-dark">@cp.Product?.Name</div>
+                                                    <small class="text-muted">Danh mục: @(cp.Product?.Category?.Name ?? "--")</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="text-danger fw-bold">
+                                                @(cp.Product?.ProductVariants?.FirstOrDefault()?.RetailPrice?.ToString("N0") ?? "--") đ
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="text-dark small">@(string.IsNullOrEmpty(cp.Note) ? "--" : cp.Note)</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="p-4 text-center text-muted fst-italic">
+                        Chưa có sản phẩm nào được chọn đề xuất cho buổi tư vấn này.
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Đánh giá từ khách hàng -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5><i class="bi bi-star-fill text-warning"></i> Đánh giá sau buổi tư vấn</h5>
+            </div>
+            <div class="admin-card-body">
+                @if (Model.Review != null)
+                {
+                    <div class="p-3 bg-light rounded-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="text-warning fs-5">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i class="bi @(i <= Model.Review.Rating ? "bi-star-fill" : "bi-star")"></i>
+                                }
+                                <span class="text-dark fw-bold ms-2 fs-6">(@Model.Review.Rating/5 sao)</span>
+                            </div>
+                            <small class="text-muted">Gửi lúc: @Model.Review.CreatedAt.ToString("HH:mm dd/MM/yyyy")</small>
+                        </div>
+                        <div class="text-dark">
+                            <strong>Khách hàng nhận xét:</strong>
+                            <p class="mb-0 mt-1 fst-italic">"@Model.Review.Comment"</p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted fst-italic">
+                        Khách hàng chưa gửi đánh giá cho buổi tư vấn này.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột phải: Khách hàng, Chuyên viên & Đổi trạng thái -->
+    <div class="col-lg-4">
+        <!-- Thông tin khách hàng -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5><i class="bi bi-person"></i> Khách hàng</h5>
+            </div>
+            <div class="admin-card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="sb-user-ava" style="width: 46px; height: 46px; font-size: 1.2rem;">
+                        @(Model.User?.FullName?.Substring(0, 1) ?? "U")
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark fs-6">@(Model.User?.FullName ?? "N/A")</div>
+                        <span class="badge bg-light text-success border">Khách hàng BeautyShop</span>
+                    </div>
+                </div>
+                <div class="small mb-2">
+                    <span class="text-muted">Email:</span>
+                    <a href="mailto:@Model.User?.Email" class="text-dark fw-bold text-decoration-none">@Model.User?.Email</a>
+                </div>
+                <div class="small">
+                    <span class="text-muted">Số điện thoại:</span>
+                    <span class="text-dark fw-bold">@(Model.User?.PhoneNumber ?? "Chưa cung cấp")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chuyên viên tư vấn & Phân công -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5><i class="bi bi-person-badge"></i> Chuyên viên phụ trách</h5>
+            </div>
+            <div class="admin-card-body">
+                @if (Model.Employee != null)
+                {
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="sb-user-ava" style="width: 46px; height: 46px; font-size: 1.2rem; background: linear-gradient(135deg, #2563eb, #38bdf8);">
+                            @(Model.Employee.FullName.Substring(0, 1))
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark fs-6">@Model.Employee.FullName</div>
+                            <small class="text-muted">@Model.Employee.Email</small>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert-warn mb-3">
+                        <i class="bi bi-exclamation-circle me-1"></i>Chưa có chuyên viên nào được phân công.
+                    </div>
+                }
+
+                @if (isAdmin)
+                {
+                    <form asp-action="AssignEmployee" method="post" class="mt-3 pt-3 border-top">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="consultationId" value="@Model.Id" />
+                        <label class="f-label">@(Model.EmployeeId == null ? "Phân công nhân viên:" : "Thay đổi nhân viên phụ trách:")</label>
+                        <select name="employeeId" class="f-ctrl mb-3" required>
+                            <option value="">-- Chọn nhân viên (Employee) --</option>
+                            @foreach (var emp in employees)
+                            {
+                                <option value="@emp.Id" selected="@(Model.EmployeeId == emp.Id)">
+                                    @emp.FullName (@emp.Email)
+                                </option>
+                            }
+                        </select>
+                        <button type="submit" class="btn-ap w-100">
+                            <i class="bi bi-check2"></i> Xác nhận phân công
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+
+        <!-- Cập nhật trạng thái nhanh -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5><i class="bi bi-toggle-on"></i> Cập nhật trạng thái</h5>
+            </div>
+            <div class="admin-card-body">
+                <form asp-action="UpdateStatus" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="consultationId" value="@Model.Id" />
+                    <label class="f-label">Trạng thái hiện tại: <span class="bdg @GetBdgClass(Model.Status)">@Model.Status</span></label>
+                    <select name="newStatus" class="f-ctrl mb-3">
+                        <option value="Chờ xác nhận" selected="@(Model.Status == "Chờ xác nhận")">Chờ xác nhận</option>
+                        <option value="Đã xác nhận" selected="@(Model.Status == "Đã xác nhận")">Đã xác nhận</option>
+                        <option value="Đã phân công" selected="@(Model.Status == "Đã phân công")">Đã phân công</option>
+                        <option value="Đang tư vấn" selected="@(Model.Status == "Đang tư vấn")">Đang tư vấn</option>
+                        <option value="Đã hoàn thành" selected="@(Model.Status == "Đã hoàn thành")">Đã hoàn thành</option>
+                        <option value="Đã hủy" selected="@(Model.Status == "Đã hủy")">Đã hủy</option>
+                    </select>
+                    <button type="submit" class="btn-ae w-100">
+                        <i class="bi bi-arrow-repeat"></i> Cập nhật trạng thái
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,108 @@
+@model BeautyShop.Models.Product
+@{
+    ViewData["Title"] = "Chi tiết sản phẩm";
+}
+
+<div class="page-hdr">
+    <div>
+        <h2><i class="bi bi-eye text-primary"></i>Chi tiết sản phẩm</h2>
+        <div class="ph-sub">Xem thông tin đầy đủ của sản phẩm</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-aw"><i class="bi bi-pencil"></i>Chỉnh sửa</a>
+        <a asp-action="Index" class="btn-as"><i class="bi bi-arrow-left"></i>Quay lại</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="admin-card text-center p-4">
+            @if (!string.IsNullOrEmpty(Model.ThumbnailUrl))
+            {
+                <img src="@Model.ThumbnailUrl" alt="@Model.Name" style="width:100%;max-width:260px;border-radius:14px;border:2px solid #edf2f7;object-fit:cover;" />
+            }
+            else
+            {
+                <div style="width:200px;height:200px;border-radius:14px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;margin:0 auto;"><i class="bi bi-image" style="font-size:3rem;color:#cbd5e1;"></i></div>
+            }
+            <h4 class="fw-800 mt-3 mb-1" style="color:#1e293b;">@Model.Name</h4>
+            <div class="mb-3">
+                @if (Model.IsActive)
+                {
+                    <span class="bdg bdg-green">Đang bán</span>
+                }
+                else
+                {
+                    <span class="bdg bdg-red">Ngừng bán</span>
+                }
+            </div>
+            <div class="d-flex justify-content-center gap-3 text-start">
+                <div style="background:#f8fafc;border-radius:10px;padding:12px 16px;flex:1;">
+                    <div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Thương hiệu</div>
+                    <div style="font-size:14px;font-weight:800;color:#334155;margin-top:4px;">@(Model.Brand?.Name ?? "—")</div>
+                </div>
+                <div style="background:#f8fafc;border-radius:10px;padding:12px 16px;flex:1;">
+                    <div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Danh mục</div>
+                    <div style="font-size:14px;font-weight:800;color:#334155;margin-top:4px;">@(Model.Category?.Name ?? "—")</div>
+                </div>
+            </div>
+            @if (Model.ProductVariants?.Any() == true)
+            {
+                var v = Model.ProductVariants.First();
+                <div class="mt-3 p-3 text-start" style="background:#f0fdf4;border-radius:10px;border:1.5px solid #bbf7d0;">
+                    <div style="font-size:11px;font-weight:800;color:#16a34a;text-transform:uppercase;">Biến thể đầu tiên</div>
+                    <div class="mt-2" style="font-size:13.5px;font-weight:700;color:#334155;">SKU: @v.SKU</div>
+                    <div style="font-size:13.5px;font-weight:700;color:#334155;">Dung tích: @v.Volume</div>
+                    <div style="font-size:15px;font-weight:900;color:#dc2626;">@(v.RetailPrice.HasValue ? $"{v.RetailPrice.Value:N0}đ" : "Chưa thiết lập giá")</div>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="admin-card mb-4">
+            <div class="admin-card-header"><h5><i class="bi bi-file-text text-primary"></i>Mô tả sản phẩm</h5></div>
+            <div class="admin-card-body">
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <p style="color:#475569;line-height:1.7;font-size:14px;font-weight:600;margin:0;">@Model.Description</p>
+                }
+                else
+                {
+                    <p class="text-muted fst-italic mb-0">Chưa có mô tả.</p>
+                }
+            </div>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="admin-card h-100">
+                    <div class="admin-card-header"><h5><i class="bi bi-list-check text-success"></i>Thành phần</h5></div>
+                    <div class="admin-card-body">
+                        @if (!string.IsNullOrEmpty(Model.Ingredients))
+                        {
+                            <p style="color:#475569;line-height:1.7;font-size:13.5px;font-weight:600;margin:0;">@Model.Ingredients</p>
+                        }
+                        else
+                        {
+                            <p class="text-muted fst-italic mb-0">Chưa có thông tin.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="admin-card h-100">
+                    <div class="admin-card-header"><h5><i class="bi bi-hand-index text-orange"></i>Hướng dẫn dùng</h5></div>
+                    <div class="admin-card-body">
+                        @if (!string.IsNullOrEmpty(Model.HowToUse))
+                        {
+                            <p style="color:#475569;line-height:1.7;font-size:13.5px;font-weight:600;margin:0;">@Model.HowToUse</p>
+                        }
+                        else
+                        {
+                            <p class="text-muted fst-italic mb-0">Chưa có thông tin.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

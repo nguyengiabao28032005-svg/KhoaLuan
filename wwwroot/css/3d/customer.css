@@ -1,0 +1,326 @@
+/* ========================================================
+   BEAUTYSHOP 3D DESIGN SYSTEM - CUSTOMER CSS
+   Hiệu ứng 3D ấn tượng, chiều sâu & hỗ trợ bán hàng
+   ======================================================== */
+
+/* 1. HERO 3D PRODUCT SHOWCASE & PARALLAX */
+.hero-3d-container {
+    position: absolute;
+    right: 4%;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 320px;
+    height: 380px;
+    perspective: 1200px;
+    transform-style: preserve-3d;
+    z-index: 5;
+    pointer-events: auto;
+}
+
+.hero-3d-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Chai tinh chất 3D nổi bật */
+.hero-3d-bottle {
+    position: relative;
+    width: 130px;
+    height: 250px;
+    transform-style: preserve-3d;
+    animation: heroBottleFloat 4.5s ease-in-out infinite;
+    cursor: grab;
+    transition: transform 0.15s ease-out;
+}
+
+.hero-3d-bottle:active {
+    cursor: grabbing;
+}
+
+/* Thân chai thủy tinh bóng bẩy */
+.bottle-body {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 180px;
+    border-radius: 24px 24px 34px 34px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(245, 158, 11, 0.65) 45%, rgba(0, 110, 74, 0.85) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 
+        0 20px 45px rgba(0, 0, 0, 0.35),
+        0 0 35px rgba(245, 158, 11, 0.35),
+        inset 0 0 25px rgba(255, 255, 255, 0.5);
+    overflow: hidden;
+}
+
+/* Nhãn chai dập chữ vàng kim */
+.bottle-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 90px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.bottle-label-title {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    color: #006E4A;
+    text-transform: uppercase;
+}
+
+.bottle-label-sub {
+    font-size: 7.5px;
+    font-weight: 700;
+    color: #f59e0b;
+    margin-top: 2px;
+    letter-spacing: 0.8px;
+}
+
+/* Nắp chai mạ vàng kim loại */
+.bottle-cap {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 55px;
+    border-radius: 8px 8px 4px 4px;
+    background: linear-gradient(90deg, #b45309 0%, #fef08a 35%, #f59e0b 65%, #92400e 100%);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+/* Đổ bóng đáy chai theo nhịp nổi */
+.hero-3d-shadow {
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    height: 25px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0) 70%);
+    animation: heroShadowPulse 4.5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes heroBottleFloat {
+    0%, 100% {
+        transform: translateY(0) rotateX(2deg) rotateY(-4deg);
+    }
+    50% {
+        transform: translateY(-20px) rotateX(-3deg) rotateY(5deg);
+    }
+}
+
+@keyframes heroShadowPulse {
+    0%, 100% {
+        transform: translateX(-50%) scale(1);
+        opacity: 0.85;
+    }
+    50% {
+        transform: translateX(-50%) scale(0.75);
+        opacity: 0.45;
+    }
+}
+
+/* Các lớp Parallax đa chiều (Cánh hoa, giọt nước, lá cây) */
+.parallax-item {
+    position: absolute;
+    pointer-events: none;
+    z-index: 4;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.25));
+    transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+.parallax-petal-1 { top: 15%; right: 75%; font-size: 24px; animation: floatDrift 6s ease-in-out infinite; }
+.parallax-petal-2 { bottom: 20%; right: 10%; font-size: 28px; animation: floatDrift 7.5s ease-in-out infinite 1s; }
+.parallax-drop-1  { top: 28%; right: 18%; font-size: 20px; animation: floatDrift 5s ease-in-out infinite 0.5s; }
+.parallax-leaf-1  { bottom: 15%; right: 80%; font-size: 32px; animation: floatDrift 8s ease-in-out infinite 2s; }
+
+@keyframes floatDrift {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-12px) rotate(8deg); }
+}
+
+/* 2. DANH SÁCH SẢN PHẨM: CARD TILT 3D & NỔI ẢNH */
+.product-item-card, .product-list-card, .product-card {
+    transform-style: preserve-3d !important;
+    perspective: var(--perspective-card) !important;
+    transition: transform 0.22s ease-out, box-shadow 0.22s ease !important;
+}
+
+.product-item-card:hover, .product-list-card:hover, .product-card:hover {
+    box-shadow: var(--depth-3), 0 0 25px rgba(0, 110, 74, 0.12) !important;
+}
+
+/* Ảnh sản phẩm nổi hẳn ra ngoài khi hover (translateZ) */
+.product-item-card .product-thumb-wrap img,
+.product-list-card .card-img-wrap img,
+.product-card img.object-fit-contain {
+    transform-style: preserve-3d;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), filter 0.35s ease;
+}
+
+.product-item-card:hover .product-thumb-wrap img,
+.product-list-card:hover .card-img-wrap img,
+.product-card:hover img.object-fit-contain {
+    transform: translateZ(28px) scale(1.06);
+    filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.18));
+}
+
+/* Badge giảm giá nổi cao nhất */
+.product-badge-discount, .badge-discount {
+    transform: translateZ(35px) !important;
+    box-shadow: 0 4px 12px rgba(255, 65, 108, 0.45) !important;
+}
+
+/* 3. TRÌNH XEM 3D XOAY 360 ĐỘ TRANG CHI TIẾT */
+.detail-3d-toggle-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.btn-3d-mode-switch {
+    border: 1.5px solid #e2e8f0;
+    background: #ffffff;
+    color: #475569;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-3d-mode-switch.active {
+    background: linear-gradient(135deg, #006E4A, #009665);
+    color: #ffffff;
+    border-color: #006E4A;
+    box-shadow: 0 4px 14px rgba(0, 110, 74, 0.3);
+}
+
+.product-3d-viewer-box {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    border-radius: 20px;
+    background: radial-gradient(circle at 50% 40%, #ffffff 0%, #f1f5f9 70%, #e2e8f0 100%);
+    border: 2px solid #e2e8f0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--depth-2);
+}
+
+#product-3d-canvas-wrap {
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+}
+
+#product-3d-canvas-wrap:active {
+    cursor: grabbing;
+}
+
+/* Thanh điều khiển 3D trực quan */
+.viewer-3d-controls {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 6px 12px;
+    border-radius: 30px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    z-index: 10;
+}
+
+.viewer-3d-ctrl-btn {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.viewer-3d-ctrl-btn:hover {
+    background: #006E4A;
+    color: #ffffff;
+    border-color: #006E4A;
+    transform: scale(1.1);
+}
+
+.viewer-3d-hint {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 4px 10px;
+    border-radius: 20px;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* 4. GIỎ HÀNG & THANH TOÁN (CHIỀU SÂU TIẾT CHẾ) */
+.cart-summary-box, .checkout-panel {
+    border-radius: 18px;
+    border: 1.5px solid #edf2f7;
+    box-shadow: var(--depth-2);
+    transition: box-shadow 0.25s ease;
+}
+
+.cart-summary-box:hover, .checkout-panel:hover {
+    box-shadow: var(--depth-3);
+}
+
+/* Responsive */
+@media (max-width: 991px) {
+    .hero-3d-container {
+        display: none; /* Ẩn 3D hero phức tạp trên mobile để tối ưu tốc độ và không che banner text */
+    }
+}

@@ -1,0 +1,155 @@
+@model IEnumerable<BeautyShop.Models.Consultation>
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Lịch tư vấn của tôi";
+
+    string GetBdgClass(string status) => status switch
+    {
+        "Chờ xác nhận" => "bdg-yellow",
+        "Đã xác nhận" => "bdg-blue",
+        "Đã phân công" => "bdg-purple",
+        "Đang tư vấn" => "bdg-blue",
+        "Đã hoàn thành" => "bdg-green",
+        "Đã hủy" => "bdg-red",
+        _ => "bdg-gray"
+    };
+}
+
+<!-- Page Header -->
+<div class="page-hdr">
+    <div>
+        <h2><i class="bi bi-calendar-check text-success"></i> Lịch tư vấn của tôi</h2>
+        <div class="ph-sub">Danh sách các buổi tư vấn chuyên sâu được phân công cho bạn</div>
+    </div>
+</div>
+
+<!-- Alerts -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert-ok mb-4 d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>@TempData["SuccessMessage"]</span>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert-err mb-4 d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <span>@TempData["ErrorMessage"]</span>
+    </div>
+}
+
+<!-- Bộ lọc & Tìm kiếm -->
+<div class="admin-card mb-4">
+    <div class="admin-card-body p-3">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <input type="text" name="keyword" class="f-ctrl" placeholder="Tìm tên khách hàng, SĐT..." value="@ViewBag.Keyword" />
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="f-ctrl">
+                    <option value="">-- Tất cả trạng thái --</option>
+                    <option value="Đã phân công" selected="@(ViewBag.CurrentStatus == "Đã phân công")">Đã phân công</option>
+                    <option value="Đang tư vấn" selected="@(ViewBag.CurrentStatus == "Đang tư vấn")">Đang tư vấn</option>
+                    <option value="Đã hoàn thành" selected="@(ViewBag.CurrentStatus == "Đã hoàn thành")">Đã hoàn thành</option>
+                    <option value="Đã hủy" selected="@(ViewBag.CurrentStatus == "Đã hủy")">Đã hủy</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="date" name="date" class="f-ctrl" value="@ViewBag.CurrentDate" />
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn-ap w-100"><i class="bi bi-search"></i> Lọc</button>
+                <a asp-action="MyAssigned" class="btn-as"><i class="bi bi-arrow-clockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Danh sách -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5><i class="bi bi-person-workspace"></i> Lịch tư vấn được phân công (@Model.Count())</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table admin-table">
+            <thead>
+                <tr>
+                    <th>Mã lịch</th>
+                    <th>Khách hàng</th>
+                    <th>Dịch vụ</th>
+                    <th>Thời gian hẹn</th>
+                    <th>Nội dung yêu cầu</th>
+                    <th>Trạng thái</th>
+                    <th>Đánh giá</th>
+                    <th class="text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-calendar2-check fs-2 d-block mb-2"></i>
+                            Bạn chưa có lịch tư vấn nào được phân công trong mục này.
+                        </td>
+                    </tr>
+                }
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>
+                            <span class="fw-bold text-dark">#CS-@item.Id.ToString("D4")</span>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">@(item.User?.FullName ?? "N/A")</div>
+                            <div class="text-muted small"><i class="bi bi-telephone me-1"></i>@(item.User?.PhoneNumber ?? "Chưa có SĐT")</div>
+                            <div class="text-muted small"><i class="bi bi-envelope me-1"></i>@(item.User?.Email ?? "")</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">@item.ConsultationType</span>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark"><i class="bi bi-calendar-event me-1 text-success"></i>@item.AppointmentDate.ToString("dd/MM/yyyy")</div>
+                            <div class="text-success fw-bold small"><i class="bi bi-clock me-1"></i>@item.StartTime.ToString(@"hh\:mm") - @item.EndTime.ToString(@"hh\:mm")</div>
+                        </td>
+                        <td>
+                            <div class="small text-muted text-truncate" style="max-width: 250px;" title="@item.CustomerNote">
+                                @(string.IsNullOrEmpty(item.CustomerNote) ? "--" : item.CustomerNote)
+                            </div>
+                        </td>
+                        <td>
+                            <span class="bdg @GetBdgClass(item.Status)">@item.Status</span>
+                        </td>
+                        <td>
+                            @if (item.Review != null)
+                            {
+                                <div class="text-warning small" title="@item.Review.Comment">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <i class="bi @(i <= item.Review.Rating ? "bi-star-fill" : "bi-star")"></i>
+                                    }
+                                    <span class="text-dark fw-bold ms-1">@item.Review.Rating/5</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Chưa có</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a asp-action="Detail" asp-route-id="@item.Id" class="btn-as sm" title="Xem chi tiết">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a asp-action="UpdateResult" asp-route-id="@item.Id" class="btn-ap sm" title="Cập nhật kết quả tư vấn">
+                                    <i class="bi bi-pencil-square me-1"></i> Cập nhật kết quả
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

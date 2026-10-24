@@ -1,0 +1,143 @@
+@model IEnumerable<BeautyShop.Models.DeliveryZone>
+@{
+    ViewData["Title"] = "Khu vực giao hàng";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var clusters = ViewBag.Clusters as List<string> ?? new List<string>();
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">📍 Danh mục Khu vực giao hàng & Phân cụm</h2>
+        <p class="text-muted mb-0">Quản lý khu vực hành chính và mã cụm lân cận phục vụ thuật toán gom chuyến giao tối ưu</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Planner" class="btn btn-primary fw-bold rounded-3 shadow-sm px-3 py-2">
+            <i class="bi bi-calendar2-range me-1"></i> Lập chuyến giao
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>@TempData["SuccessMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+    <div class="alert alert-info py-2 small mb-3 border-0 bg-info-subtle text-info-emphasis rounded-3">
+        <i class="bi bi-info-circle-fill me-1"></i>
+        <strong>Ghi chú mô hình phân cụm:</strong> Đây là mô hình phân cụm giả định cấu hình linh hoạt theo nhóm lân cận, không hard-code cấp hành chính. Tên khu vực sử dụng thực tế (ví dụ: TP. Thủ Đức thay cho Q.2 và Q.9 cũ). Các đơn vị có đề án sáp nhập hoặc điều chỉnh được đánh dấu <em>"Cần kiểm chứng"</em>.
+    </div>
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small fw-bold text-muted mb-1">Tìm kiếm khu vực / Tỉnh thành</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input type="text" name="keyword" class="form-control border-0 bg-light" placeholder="Nhập tên khu vực hoặc tỉnh..." value="@ViewBag.Keyword" />
+            </div>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small fw-bold text-muted mb-1">Lọc theo mã cụm</label>
+            <select name="cluster" class="form-select border-0 bg-light">
+                <option value="">-- Tất cả các cụm --</option>
+                @foreach (var c in clusters)
+                {
+                    <option value="@c" selected="@(ViewBag.CurrentCluster == c)">@c</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-outline-primary fw-bold w-100 py-2 rounded-3">
+                <i class="bi bi-funnel me-1"></i> Lọc
+            </button>
+            <a asp-action="Zones" class="btn btn-light fw-bold py-2 rounded-3 text-secondary">
+                <i class="bi bi-arrow-clockwise"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-secondary small fw-bold text-uppercase">
+                <tr>
+                    <th class="ps-4">STT Tuyến</th>
+                    <th>Tên khu vực</th>
+                    <th>Tỉnh / Thành phố</th>
+                    <th>Mã cụm (Cluster)</th>
+                    <th>Tên cụm lân cận</th>
+                    <th>Cụm kề (Ghép chuyến)</th>
+                    <th>Ghi chú hành chính</th>
+                    <th class="text-center">Trạng thái</th>
+                    <th class="pe-4 text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var zone in Model)
+                {
+                    <tr>
+                        <td class="ps-4 fw-bold text-primary font-monospace">#@zone.SortOrder</td>
+                        <td class="fw-bold text-dark">@zone.ZoneName</td>
+                        <td><span class="badge bg-light text-dark border">@zone.ProvinceName</span></td>
+                        <td><span class="badge bg-primary-subtle text-primary font-monospace fw-bold">@zone.ClusterCode</span></td>
+                        <td class="small text-secondary">@zone.ClusterName</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(zone.AdjacentClusterCodes))
+                            {
+                                <span class="badge bg-info-subtle text-info fw-bold">@zone.AdjacentClusterCodes</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(zone.Notes))
+                            {
+                                @if (zone.Notes.Contains("Cần kiểm chứng"))
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis fw-bold">
+                                        <i class="bi bi-exclamation-triangle me-1"></i> @zone.Notes
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="small text-muted">@zone.Notes</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (zone.IsActive)
+                            {
+                                <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Hoạt động
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill fw-bold">
+                                    <i class="bi bi-pause-circle-fill me-1"></i> Tạm tắt
+                                </span>
+                            }
+                        </td>
+                        <td class="pe-4 text-end">
+                            <form asp-action="ToggleZone" asp-route-id="@zone.Id" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm @(zone.IsActive ? "btn-outline-danger" : "btn-outline-success") fw-bold rounded-3">
+                                    @(zone.IsActive ? "Tắt" : "Bật")
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,420 @@
+@model IEnumerable<BeautyShop.Models.Voucher>
+
+@{
+    ViewData["Title"] = "Kho Voucher & Ưu Đãi";
+    var savedIds = ViewBag.SavedVoucherIds as List<int> ?? new List<int>();
+    string curFilter = ViewBag.CurrentFilter as string ?? "all";
+    bool isLoggedIn = ViewBag.IsLoggedIn != null && (bool)ViewBag.IsLoggedIn;
+}
+
+@section Styles {
+    <style>
+        .voucher-banner {
+            background: linear-gradient(135deg, #006E4A 0%, #009665 50%, #004d34 100%);
+            border-radius: 20px;
+            padding: 36px 32px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 110, 74, 0.25);
+            margin-bottom: 30px;
+        }
+        .voucher-banner::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 180px;
+            height: 180px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+        .voucher-banner::after {
+            content: '🎁';
+            position: absolute;
+            right: 40px;
+            bottom: 10px;
+            font-size: 5rem;
+            opacity: 0.2;
+        }
+
+        /* Filter pills */
+        .filter-btn {
+            border-radius: 25px;
+            padding: 8px 18px;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #475569;
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .filter-btn:hover {
+            border-color: #006E4A;
+            color: #006E4A;
+            background: #f0fdf4;
+        }
+        .filter-btn.active {
+            background: linear-gradient(135deg, #006E4A, #009665);
+            color: #fff;
+            border-color: #006E4A;
+            box-shadow: 0 4px 12px rgba(0, 110, 74, 0.25);
+        }
+
+        /* Voucher Card */
+        .voucher-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1.5px solid #e8edf5;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            display: flex;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            min-height: 165px;
+        }
+        .voucher-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+
+        /* Left side of ticket */
+        .v-left {
+            width: 125px;
+            background: linear-gradient(135deg, #006E4A, #009665);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 10px;
+            text-align: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .v-left.fixed-badge {
+            background: linear-gradient(135deg, #ea580c, #f97316);
+        }
+        .v-left::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 0;
+            bottom: 0;
+            width: 12px;
+            background-image: radial-gradient(circle at 6px 12px, transparent 6px, #fff 7px);
+            background-size: 12px 24px;
+        }
+        .v-discount-val {
+            font-size: 1.5rem;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .v-discount-lbl {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+
+        /* Right side of ticket */
+        .v-right {
+            flex: 1;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .v-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .v-condition {
+            font-size: 12.5px;
+            color: #64748b;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        .v-expiry {
+            font-size: 11.5px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        .v-code-badge {
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: 800;
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px dashed #93c5fd;
+            padding: 4px 10px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .v-code-badge:hover {
+            background: #dbeafe;
+        }
+
+        .btn-claim {
+            background: linear-gradient(135deg, #006E4A, #009665);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-claim:hover {
+            filter: brightness(1.1);
+            transform: scale(1.02);
+            color: #fff;
+        }
+        .btn-claimed {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1.5px solid #86efac;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 12.5px;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+    </style>
+}
+
+<div class="py-2">
+
+    <!-- BREADCRUMB -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+                <a asp-controller="Home" asp-action="Index" style="color:#718096;text-decoration:none;font-weight:600;font-size:13px;">
+                    <i class="bi bi-house me-1"></i>Trang chủ
+                </a>
+            </li>
+            <li class="breadcrumb-item active fw-bold" style="font-size:13px;" aria-current="page">Kho Voucher & Ưu Đãi</li>
+        </ol>
+    </nav>
+
+    <!-- BANNER KHUYẾN MÃI -->
+    <div class="voucher-banner">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <span class="badge bg-warning text-dark px-3 py-1 mb-2 fw-bold" style="font-size: 12px;">
+                    <i class="bi bi-fire me-1"></i>KHUYẾN MÃI ĐỘC QUYỀN
+                </span>
+                <h2 class="fw-bold mb-2">🎁 KHO VOUCHER CỦA SHOP</h2>
+                <p class="mb-0 text-white-50" style="font-size: 15px;">
+                    Thu thập mã giảm giá để nhận chiết khấu trực tiếp trên đơn hàng của bạn. Đơn càng lớn, giảm càng nhiều!
+                </p>
+            </div>
+            <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                @if (isLoggedIn)
+                {
+                    <a asp-action="MyVouchers" class="btn btn-light fw-bold px-4 py-2 rounded-pill shadow-sm" style="color:#006E4A;">
+                        <i class="bi bi-wallet2 me-1"></i> Voucher của tôi (@savedIds.Count)
+                    </a>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="/Voucher" class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm text-dark">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập để lưu mã
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTER TABS -->
+    <div class="d-flex gap-2 mb-4 overflow-auto pb-2" style="white-space: nowrap;">
+        <a asp-action="Index" asp-route-filter="all" class="filter-btn @(curFilter == "all" ? "active" : "")">
+            Tất cả voucher
+        </a>
+        <a asp-action="Index" asp-route-filter="percent" class="filter-btn @(curFilter == "percent" ? "active" : "")">
+            <i class="bi bi-percent me-1"></i>Giảm theo %
+        </a>
+        <a asp-action="Index" asp-route-filter="fixed" class="filter-btn @(curFilter == "fixed" ? "active" : "")">
+            <i class="bi bi-cash-stack me-1"></i>Giảm tiền mặt
+        </a>
+        <a asp-action="Index" asp-route-filter="min300" class="filter-btn @(curFilter == "min300" ? "active" : "")">
+            Đơn từ 300K
+        </a>
+        <a asp-action="Index" asp-route-filter="min500" class="filter-btn @(curFilter == "min500" ? "active" : "")">
+            Đơn từ 500K
+        </a>
+    </div>
+
+    <!-- VOUCHER GRID -->
+    <div class="row g-4">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var item in Model)
+            {
+                bool isSaved = savedIds.Contains(item.Id);
+                int pctUsed = item.TotalUsageLimit.HasValue && item.TotalUsageLimit > 0
+                    ? (int)Math.Min(100, Math.Round((double)item.UsedCount / item.TotalUsageLimit.Value * 100))
+                    : 0;
+
+                <div class="col-lg-6">
+                    <div class="voucher-card">
+                        <!-- Left badge -->
+                        <div class="v-left @(item.DiscountType == "Fixed" ? "fixed-badge" : "")">
+                            @if (item.DiscountType == "Percent")
+                            {
+                                <div class="v-discount-val">@item.DiscountValue.ToString("G29")%</div>
+                                <div class="v-discount-lbl">GIẢM GIÁ</div>
+                            }
+                            else
+                            {
+                                <div class="v-discount-val">@((item.DiscountValue / 1000).ToString("N0"))K</div>
+                                <div class="v-discount-lbl">GIẢM TIỀN</div>
+                            }
+                        </div>
+
+                        <!-- Right details -->
+                        <div class="v-right">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <h5 class="v-title mb-0">🎁 @(!string.IsNullOrEmpty(item.Name) ? item.Name : item.Code)</h5>
+                                </div>
+                                <div class="v-condition">
+                                    @if (item.DiscountType == "Percent")
+                                    {
+                                        <span>Giảm @item.DiscountValue.ToString("G29")%</span>
+                                        @if (item.MaxDiscountAmount.HasValue && item.MaxDiscountAmount.Value > 0)
+                                        {
+                                            <span>(Tối đa @item.MaxDiscountAmount.Value.ToString("N0")đ)</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span>Giảm trực tiếp @item.DiscountValue.ToString("N0")đ</span>
+                                    }
+                                </div>
+                                <div class="v-condition text-muted">
+                                    <i class="bi bi-cart2 me-1"></i>Đơn tối thiểu: <strong>@(item.MinOrderValue > 0 ? item.MinOrderValue.ToString("N0") + "đ" : "0đ")</strong>
+                                </div>
+                                <div class="v-expiry mt-1">
+                                    <i class="bi bi-clock me-1 text-danger"></i>HSD: <strong>@item.EndDate.ToString("dd/MM/yyyy")</strong>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                                <!-- Mã code + copy -->
+                                <div class="v-code-badge copy-trigger" data-code="@item.Code" title="Nhấn để sao chép mã">
+                                    <span>@item.Code</span>
+                                    <i class="bi bi-copy"></i>
+                                </div>
+
+                                <!-- Nút Lưu mã / Dùng ngay -->
+                                <div>
+                                    @if (isSaved)
+                                    {
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <span class="btn-claimed">
+                                                <i class="bi bi-check-circle-fill"></i> Đã lưu
+                                            </span>
+                                            <a asp-controller="Product" asp-action="Index" class="btn btn-sm btn-outline-success fw-bold">
+                                                Dùng ngay
+                                            </a>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn-claim save-voucher-btn" data-id="@item.Id" data-code="@item.Code">
+                                            <i class="bi bi-bookmark-plus me-1"></i>Lưu mã
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-ticket-perforated fs-1 text-muted d-block mb-3"></i>
+                <h5 class="fw-bold text-dark">Hiện chưa có mã giảm giá nào trong danh mục này</h5>
+                <p class="text-muted">Vui lòng quay lại sau hoặc chọn bộ lọc khác.</p>
+                <a asp-action="Index" class="btn btn-success px-4 rounded-pill fw-bold">Xem tất cả voucher</a>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Sao chép mã
+            $('.copy-trigger').on('click', function() {
+                var code = $(this).data('code');
+                navigator.clipboard.writeText(code).then(function() {
+                    if (window.showToast) {
+                        window.showToast('Đã sao chép mã: ' + code, 'success');
+                    } else {
+                        alert('Đã sao chép mã: ' + code);
+                    }
+                });
+            });
+
+            // Lưu mã vào ví voucher
+            $('.save-voucher-btn').on('click', function() {
+                var btn = $(this);
+                var voucherId = btn.data('id');
+                var code = btn.data('code');
+
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...');
+
+                $.post('/Voucher/SaveVoucher', { id: voucherId }, function(res) {
+                    if (res.requireLogin) {
+                        if (confirm(res.message + ' Bạn có muốn đăng nhập ngay?')) {
+                            window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                        } else {
+                            btn.prop('disabled', false).html('<i class="bi bi-bookmark-plus me-1"></i>Lưu mã');
+                        }
+                    } else if (res.success) {
+                        if (window.showToast) {
+                            window.showToast(res.message, 'success');
+                        } else {
+                            alert(res.message);
+                        }
+                        // Đổi nút thành Đã lưu + Dùng ngay
+                        btn.parent().html(`
+                            <div class="d-flex gap-2 align-items-center">
+                                <span class="btn-claimed">
+                                    <i class="bi bi-check-circle-fill"></i> Đã lưu
+                                </span>
+                                <a href="/Product" class="btn btn-sm btn-outline-success fw-bold">Dùng ngay</a>
+                            </div>
+                        `);
+                    } else {
+                        if (window.showToast) {
+                            window.showToast(res.message, 'warning');
+                        } else {
+                            alert(res.message);
+                        }
+                        btn.prop('disabled', false).html('<i class="bi bi-bookmark-plus me-1"></i>Lưu mã');
+                    }
+                }).fail(function() {
+                    alert('Lỗi kết nối máy chủ. Vui lòng thử lại!');
+                    btn.prop('disabled', false).html('<i class="bi bi-bookmark-plus me-1"></i>Lưu mã');
+                });
+            });
+        });
+    </script>
+}

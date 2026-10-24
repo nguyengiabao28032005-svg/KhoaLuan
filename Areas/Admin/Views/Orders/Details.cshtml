@@ -1,0 +1,133 @@
+@model BeautyShop.Models.Order
+
+@{
+    ViewData["Title"] = "Chi tiết đơn hàng " + Model.OrderCode;
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var details = ViewBag.OrderDetails as IEnumerable<BeautyShop.Models.OrderDetail>;
+}
+
+<div class="container-fluid px-4 py-4" style="max-width: 1100px;">
+    <div class="mb-4">
+        <a asp-action="Index" class="text-decoration-none small text-secondary fw-semibold"><i class="bi bi-arrow-left me-1"></i>Trở lại danh sách</a>
+        <h3 class="fw-bold text-dark mt-2">Chi Tiết Đơn Hàng: <span class="text-primary">@Model.OrderCode</span></h3>
+        <span class="text-muted small">Thời gian đặt: @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-person-lines-fill me-2 text-success"></i>Thông tin người nhận hàng</h6>
+                </div>
+                <div class="card-body pt-0 row g-3 small">
+                    <div class="col-sm-6">
+                        <p class="mb-1 text-muted">Họ tên người nhận:</p>
+                        <h6 class="fw-bold text-dark">@Model.CustomerName</h6>
+                    </div>
+                    <div class="col-sm-6">
+                        <p class="mb-1 text-muted">Số điện thoại liên hệ:</p>
+                        <h6 class="fw-bold text-dark">@Model.PhoneNumber</h6>
+                    </div>
+                    <div class="col-12">
+                        <p class="mb-1 text-muted">Địa chỉ bàn giao chi tiết:</p>
+                        <h6 class="fw-bold text-dark mb-0">@Model.ShippingAddress</h6>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-box-seam me-2 text-primary"></i>Danh sách mỹ phẩm đặt mua</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 small">
+                            <thead class="table-light text-secondary">
+                                <tr>
+                                    <th class="ps-3">Sản phẩm mua</th>
+                                    <th class="text-center">Số lượng</th>
+                                    <th class="text-end">Đơn giá</th>
+                                    <th class="text-end pe-3">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (details != null && details.Any())
+                                {
+                                    foreach (var item in details)
+                                    {
+                                        <tr>
+                                            <td class="ps-3">
+                                                <div class="fw-bold text-dark">@(item.Variant?.Product?.Name ?? "Sản phẩm")</div>
+                                                <small class="text-muted">Phân loại: @(item.Variant?.Volume ?? "Mặc định")</small>
+                                            </td>
+                                            <td class="text-center fw-semibold">@item.Quantity</td>
+                                            <td class="text-end text-secondary">@item.UnitPrice.ToString("N0") đ</td>
+                                            <td class="text-end fw-bold text-dark pe-3">@((item.Quantity * item.UnitPrice).ToString("N0")) đ</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-3 bg-light border-top text-end rounded-bottom-3 small">
+                        <p class="mb-1">Tiền hàng thô: <span class="fw-bold text-dark">@Model.TotalAmount.ToString("N0") đ</span></p>
+                        <p class="mb-1">Phí vận chuyển: <span class="fw-bold text-dark">@Model.DeliveryFee.ToString("N0") đ</span></p>
+                        <h5 class="fw-bold text-danger mt-2 mb-0">Tổng cộng thanh toán: @Model.FinalAmount.ToString("N0") đ</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-gear-wide-connected me-2 text-warning"></i>Xử lý & Cập nhật đơn</h6>
+                </div>
+                <div class="card-body pt-0">
+                    <form asp-action="UpdateStatus" method="post">
+                        <input type="hidden" name="orderId" value="@Model.Id" />
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary">Hình thức thanh toán:</label>
+                            <input type="text" class="form-control form-control-sm bg-light fw-medium text-dark" value="@(Model.PaymentMethod == "ChuyenKhoan" ? "Chuyển khoản qua VietQR" : "Thanh toán tiền mặt COD")" readonly />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary">Trạng thái thanh toán hiện tại:</label>
+                            <select name="paymentStatus" class="form-select form-select-sm fw-medium">
+                                <option value="Unpaid" selected="@(Model.PaymentStatus == "Unpaid")">Unpaid (Chưa thanh toán)</option>
+                                <option value="Awaiting Payment" selected="@(Model.PaymentStatus == "Awaiting Payment")">Awaiting Payment (Chờ thanh toán QR)</option>
+                                <option value="Paid" selected="@(Model.PaymentStatus == "Paid")">Paid (Đã nhận tiền)</option>
+                            </select>
+                        </div>
+
+                        <hr class="my-3 text-muted" />
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-semibold text-secondary">Trạng thái xử lý vận đơn:</label>
+                            <select name="orderStatus" class="form-select form-select-sm fw-bold text-primary">
+                                <option value="Pending" selected="@(Model.OrderStatus == "Pending")">Pending (Chờ duyệt)</option>
+                                <option value="Confirmed" selected="@(Model.OrderStatus == "Confirmed")">Confirmed (Đã xác nhận)</option>
+                                <option value="Shipping" selected="@(Model.OrderStatus == "Shipping")">Shipping (Đang giao hàng)</option>
+                                <option value="Completed" selected="@(Model.OrderStatus == "Completed")">Completed (Giao thành công)</option>
+                                <option value="Cancelled" selected="@(Model.OrderStatus == "Cancelled")">Cancelled (Hủy bỏ đơn)</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-sm w-100 py-2 fw-semibold rounded-3 shadow-sm">
+                            <i class="bi bi-cloud-arrow-up me-1"></i> Lưu cập nhật
+                        </button>
+                    </form>
+
+                    <hr class="my-3 text-muted" />
+                    <div>
+                        <a href="/Admin/Transfers/Create?orderId=@Model.Id" class="btn btn-outline-success btn-sm w-100 py-2 fw-semibold rounded-3 shadow-sm" title="Tạo phiếu chuyển kho lấy hàng từ chi nhánh khác bù cho đơn này">
+                            <i class="bi bi-truck me-1"></i> Điều chuyển kho cho đơn này
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

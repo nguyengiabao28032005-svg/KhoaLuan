@@ -1,0 +1,151 @@
+@model BeautyShop.ViewModels.BookConsultationViewModel
+@{
+    ViewData["Title"] = "Đặt lịch tư vấn chuyên sâu";
+}
+
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb bg-white p-3 rounded-4 shadow-sm">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none text-success fw-bold"><i class="bi bi-house-door me-1"></i>Trang chủ</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Đặt lịch tư vấn</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 rounded-4 shadow-sm overflow-hidden">
+                <!-- Header Banner -->
+                <div class="p-4 text-white" style="background: linear-gradient(135deg, #006E4A, #009665);">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-white text-success d-flex align-items-center justify-content-center" style="width: 56px; height: 56px; font-size: 1.8rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            <i class="bi bi-calendar-check-fill"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-bold mb-1">Đặt lịch tư vấn mỹ phẩm & Chăm sóc da</h3>
+                            <p class="mb-0 text-white-50" style="font-size: 0.95rem;">Đội ngũ chuyên viên giàu kinh nghiệm sẵn sàng lắng nghe và xây dựng chu trình chăm sóc chuẩn khoa học cho bạn.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4 p-md-5">
+                    
+
+                    <form asp-action="Book" method="post">
+                        @Html.AntiForgeryToken()
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3 mb-4"></div>
+
+                        <!-- 1. Loại hình tư vấn -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-dark mb-2">
+                                <i class="bi bi-tag-fill text-success me-1"></i> Chọn dịch vụ tư vấn <span class="text-danger">*</span>
+                            </label>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="card h-100 p-3 border-2 rounded-3 cursor-pointer service-option" id="label-type-1" style="cursor: pointer;">
+                                        <div class="d-flex align-items-start gap-3">
+                                            <input type="radio" asp-for="ConsultationType" value="Tư vấn chăm sóc da" class="form-check-input mt-1" checked />
+                                            <div>
+                                                <div class="fw-bold text-dark">Tư vấn chăm sóc da</div>
+                                                <small class="text-muted">Phân tích tình trạng da (mụn, dầu, lão hóa...) và thiết lập chu trình Skincare Routine khoa học.</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="card h-100 p-3 border-2 rounded-3 cursor-pointer service-option" id="label-type-2" style="cursor: pointer;">
+                                        <div class="d-flex align-items-start gap-3">
+                                            <input type="radio" asp-for="ConsultationType" value="Tư vấn sản phẩm" class="form-check-input mt-1" />
+                                            <div>
+                                                <div class="fw-bold text-dark">Tư vấn sản phẩm</div>
+                                                <small class="text-muted">Tư vấn chọn lựa mỹ phẩm chính hãng, kiểm tra thành phần tương thích, son môi, kem chống nắng...</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <span asp-validation-for="ConsultationType" class="text-danger small"></span>
+                        </div>
+
+                        <!-- 2. Chọn ngày hẹn -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-12">
+                                <label asp-for="AppointmentDate" class="form-label fw-bold text-dark">
+                                    <i class="bi bi-calendar-event text-success me-1"></i> Ngày hẹn <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="AppointmentDate" type="date" class="form-control form-control-lg rounded-3 border-2" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                <span asp-validation-for="AppointmentDate" class="text-danger small"></span>
+                                <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Vui lòng chọn ngày từ hôm nay trở đi.</small>
+                            </div>
+                        </div>
+
+                        <!-- 3. Chọn khung giờ (Cho phép chọn hoặc nhập trực tiếp) -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label asp-for="StartTime" class="form-label fw-bold text-dark">
+                                    <i class="bi bi-clock text-success me-1"></i> Giờ bắt đầu <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="StartTime" type="time" class="form-control form-control-lg rounded-3 border-2" value="09:00" list="time-suggestions" />
+                                <span asp-validation-for="StartTime" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="EndTime" class="form-label fw-bold text-dark">
+                                    <i class="bi bi-clock-history text-success me-1"></i> Giờ kết thúc <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="EndTime" type="time" class="form-control form-control-lg rounded-3 border-2" value="09:45" list="time-suggestions" />
+                                <span asp-validation-for="EndTime" class="text-danger small"></span>
+                                <small class="text-muted">Khuyên dùng thời lượng tư vấn: 45 phút.</small>
+                            </div>
+                        </div>
+
+                        <!-- Danh sách gợi ý khung giờ nhanh khi click vào ô input -->
+                        <datalist id="time-suggestions">
+                            <option value="08:30"></option>
+                            <option value="09:00"></option>
+                            <option value="09:30"></option>
+                            <option value="10:00"></option>
+                            <option value="10:30"></option>
+                            <option value="11:00"></option>
+                            <option value="13:30"></option>
+                            <option value="14:00"></option>
+                            <option value="14:30"></option>
+                            <option value="15:00"></option>
+                            <option value="15:30"></option>
+                            <option value="16:00"></option>
+                            <option value="16:30"></option>
+                            <option value="17:00"></option>
+                            <option value="18:00"></option>
+                            <option value="18:30"></option>
+                            <option value="19:00"></option>
+                            <option value="19:30"></option>
+                        </datalist>
+
+                        <!-- 4. Ghi chú / Tình trạng da -->
+                        <div class="mb-4">
+                            <label asp-for="CustomerNote" class="form-label fw-bold text-dark">
+                                <i class="bi bi-chat-left-text text-success me-1"></i> Nội dung cần tư vấn / Tình trạng da
+                            </label>
+                            <textarea asp-for="CustomerNote" class="form-control rounded-3 border-2" rows="4" placeholder="Ví dụ: Da em là da hỗn hợp thiên dầu, vùng mũi và cằm hay nổi mụn li ti. Em muốn tư vấn kem chống nắng không bết dính và serum kiềm dầu..."></textarea>
+                            <span asp-validation-for="CustomerNote" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Cam kết & nút gửi -->
+                        <div class="p-3 rounded-3 bg-light border mb-4">
+                            <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 0.9rem;">
+                                <i class="bi bi-shield-check text-success fs-5"></i>
+                                <span>Tất cả buổi tư vấn tại BeautyShop đều <strong>hoàn toàn miễn phí</strong> và được bảo mật thông tin cá nhân 100%.</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-3 justify-content-end">
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-bold">Hủy bỏ</a>
+                            <button type="submit" class="btn btn-success px-5 py-2 rounded-3 fw-bold shadow-sm" style="background: #006E4A; border-color: #006E4A;">
+                                <i class="bi bi-send-fill me-2"></i>Gửi yêu cầu đặt lịch
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

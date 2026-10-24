@@ -1,0 +1,1431 @@
+@model BeautyShop.Models.Product
+
+@{
+    ViewData["Title"] = Model.Name;
+    var variants = Model.ProductVariants?.OrderBy(v => v.Id).ToList() ?? new List<BeautyShop.Models.ProductVariant>();
+    var variant = variants.FirstOrDefault();
+    bool isAvailable = (bool)(ViewBag.IsAvailable ?? false);
+    int stockQuantity = (int)(ViewBag.StockQuantity ?? 0);
+    bool isOutOfStock = !isAvailable;
+}
+
+@section Styles {
+    <style>
+        /* ===== IMAGE PANEL ===== */
+        .detail-img-panel {
+            background: #fff;
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1.5px solid #edf2f7;
+            position: relative;
+            overflow: hidden;
+        }
+
+            .detail-img-panel::before {
+                content: '';
+                position: absolute;
+                top: -30px;
+                right: -30px;
+                width: 130px;
+                height: 130px;
+                border-radius: 50%;
+                background: #e6f5ef;
+                opacity: 0.6;
+            }
+
+        .detail-main-img {
+            width: 100%;
+            height: 420px;
+            object-fit: contain;
+            border-radius: 12px;
+            transition: transform 0.4s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .detail-img-panel:hover .detail-main-img {
+            transform: scale(1.04);
+        }
+
+        .detail-wishlist-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 10;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1.5px solid #edf2f7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #e53935;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+            .detail-wishlist-btn:hover {
+                background: #e53935;
+                color: #fff;
+                transform: scale(1.12);
+                box-shadow: 0 4px 16px rgba(229,57,53,0.3);
+            }
+
+        /* ===== INFO PANEL ===== */
+        .detail-info-panel {
+            background: #fff;
+            border-radius: 20px;
+            padding: 30px 32px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1.5px solid #edf2f7;
+            height: 100%;
+        }
+
+        /* Brand tag */
+        .brand-pill {
+            background: #e6f5ef;
+            color: #006E4A;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid #4db88a;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+
+        .product-title-h1 {
+            font-size: 1.55rem;
+            font-weight: 900;
+            color: #1a1a2e;
+            line-height: 1.3;
+            margin-bottom: 12px;
+        }
+
+        .meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            padding-bottom: 16px;
+            border-bottom: 1.5px solid #edf2f7;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #718096;
+            font-weight: 600;
+        }
+
+        .star-row i {
+            color: #f59e0b;
+            font-size: 0.95rem;
+        }
+
+        .review-count {
+            color: #718096;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .sold-count {
+            background: #f4f6f9;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        /* ===== PRICE BOX ===== */
+        .price-box {
+            background: linear-gradient(135deg, #fff5f5 0%, #fffaf0 100%);
+            border: 1.5px dashed #ffb3b3;
+            border-radius: 14px;
+            padding: 18px 22px;
+            margin-bottom: 20px;
+        }
+
+        .price-main {
+            color: #e53935;
+            font-size: 2.2rem;
+            font-weight: 900;
+            line-height: 1;
+            display: block;
+        }
+
+        .price-old {
+            color: #a0aec0;
+            text-decoration: line-through;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .price-discount-badge {
+            background: #e53935;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        .in-stock-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 800;
+            margin-top: 8px;
+        }
+
+        .free-ship-note {
+            font-size: 13px;
+            color: #006E4A;
+            font-weight: 700;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ===== VARIANT / SKU ===== */
+        .variant-info {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #718096;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+            .variant-info span strong {
+                color: #2d3748;
+            }
+
+        /* Style cho các nút chọn phân loại màu sắc/dung tích */
+        .variant-btn-option {
+            border: 2px solid #e2e8f0;
+            background: #fff;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #2d3748;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+            .variant-btn-option:hover {
+                border-color: #006E4A;
+                color: #006E4A;
+            }
+
+            .variant-btn-option.active {
+                border-color: #006E4A;
+                background: #e6f5ef;
+                color: #006E4A;
+                box-shadow: 0 0 0 2px rgba(0,110,74,0.15);
+            }
+
+            .variant-btn-option.out-of-stock-variant {
+                border-color: #e2e8f0;
+                background: #f8f8f8;
+                color: #a0aec0;
+                cursor: not-allowed;
+                opacity: 0.7;
+                text-decoration: line-through;
+            }
+
+                .variant-btn-option.out-of-stock-variant:hover {
+                    border-color: #cbd5e1;
+                    color: #a0aec0;
+                }
+
+        /* ===== QTY CONTROL ===== */
+        .qty-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #718096;
+            margin-bottom: 8px;
+        }
+
+        .qty-control {
+            display: flex;
+            align-items: center;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            width: 138px;
+        }
+
+        .qty-btn {
+            background: #f4f6f9;
+            border: none;
+            width: 40px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #2d3748;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Nunito', sans-serif;
+            flex-shrink: 0;
+        }
+
+            .qty-btn:hover {
+                background: #006E4A;
+                color: #fff;
+            }
+
+        .qty-number {
+            border: none;
+            text-align: center;
+            flex: 1;
+            height: 44px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #1a1a2e;
+            background: #fff;
+            outline: none;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        /* ===== CTA BUTTONS ===== */
+        .btn-add-to-cart {
+            background: linear-gradient(135deg, #006E4A, #009665);
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            padding: 15px 24px;
+            font-size: 1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+            .btn-add-to-cart:hover {
+                background: linear-gradient(135deg, #003d29, #006E4A);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 24px rgba(0,110,74,0.3);
+            }
+
+        .btn-buy-now {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 2px solid #fed7aa;
+            border-radius: 14px;
+            padding: 13px 24px;
+            font-size: 14px;
+            font-weight: 800;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+            .btn-buy-now:hover {
+                background: #fff;
+                border-color: #f97316;
+                color: #ea580c;
+                box-shadow: 0 4px 14px rgba(249,115,22,0.2);
+            }
+
+        /* ===== TRUST GRID ===== */
+        .trust-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .trust-item {
+            background: #f9fafb;
+            border: 1.5px solid #edf2f7;
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+            .trust-item i {
+                font-size: 1.15rem;
+                color: #006E4A;
+            }
+
+        /* ===== MINI TRUST BADGES (dưới ảnh) ===== */
+        .mini-badge-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .mini-badge {
+            flex: 1;
+            background: #f4f6f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: #718096;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+            .mini-badge i {
+                font-size: 1.2rem;
+            }
+
+        /* ===== TABS ===== */
+        .custom-tabs {
+            border-bottom: 2px solid #edf2f7;
+            margin-bottom: 0;
+        }
+
+            .custom-tabs .nav-link {
+                color: #718096;
+                font-weight: 700;
+                border: none;
+                border-bottom: 3px solid transparent;
+                margin-bottom: -2px;
+                padding: 12px 24px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                transition: all 0.2s;
+            }
+
+                .custom-tabs .nav-link:hover {
+                    color: #006E4A;
+                    background: #f4f6f9;
+                }
+
+                .custom-tabs .nav-link.active {
+                    color: #006E4A;
+                    border-bottom-color: #006E4A;
+                    background: transparent;
+                    font-weight: 800;
+                }
+
+        /* ===== REVIEW ===== */
+        .review-card {
+            background: #fff;
+            border: 1.5px solid #edf2f7;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 14px;
+            transition: all 0.2s;
+        }
+
+            .review-card:hover {
+                border-color: #4db88a;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+            }
+
+        .review-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #006E4A, #009665);
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .star-yellow {
+            color: #f59e0b;
+            font-size: 0.9rem;
+        }
+
+        /* ===== RATING SUMMARY ===== */
+        .rating-summary-box {
+            background: #f9fafb;
+            border: 1.5px solid #edf2f7;
+            border-radius: 14px;
+            padding: 20px 24px;
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            margin-bottom: 22px;
+        }
+
+        .big-score {
+            font-size: 3.2rem;
+            font-weight: 900;
+            color: #1a1a2e;
+            line-height: 1;
+        }
+
+        @@media (max-width: 768px) {
+            .detail-main-img {
+                height: 300px;
+            }
+
+            .product-title-h1 {
+                font-size: 1.25rem;
+            }
+
+            .price-main {
+                font-size: 1.7rem;
+            }
+
+            .detail-info-panel {
+                padding: 20px;
+            }
+
+            .trust-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+}
+
+<div class="py-2">
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-4 shadow-sm" style="font-weight:700;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show rounded-3 mb-4 shadow-sm" style="font-weight:700;">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- ===== BREADCRUMB ===== -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+                <a asp-controller="Home" asp-action="Index" style="color:#718096;text-decoration:none;font-weight:600;font-size:13px;">
+                    <i class="bi bi-house me-1"></i>Trang chủ
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a asp-action="Index" style="color:#718096;text-decoration:none;font-weight:600;font-size:13px;">Sản phẩm</a>
+            </li>
+            @if (Model.Category != null)
+            {
+                <li class="breadcrumb-item">
+                    <a asp-action="Index" asp-route-categoryId="@Model.Category.Id" style="color:#718096;text-decoration:none;font-weight:600;font-size:13px;">@Model.Category.Name</a>
+                </li>
+            }
+            <li class="breadcrumb-item active fw-700" style="font-size:13px;color:#2d3748;" aria-current="page">@Model.Name</li>
+        </ol>
+    </nav>
+
+    <!-- ===== PRODUCT TOP SECTION ===== -->
+    <div class="row g-4 mb-4">
+
+        <!-- ÔNG ẢNH -->
+        <div class="col-md-5">
+            <!-- 3D 360 Viewer & 2D Toggle Component -->
+            <partial name="~/Views/Shared/Partials/3d/_ProductViewer3D.cshtml" />
+
+            <div class="detail-img-panel" id="detail-static-panel">
+                <a asp-controller="Wishlist" asp-action="Add" asp-route-productId="@Model.Id"
+                   class="detail-wishlist-btn" title="Thêm vào yêu thích" id="detail-wishlist-btn">
+                    <i class="bi bi-heart"></i>
+                </a>
+                @{
+                    // Ảnh hiển thị khi trang load: LUÔN dùng ThumbnailUrl của sản phẩm
+                    // (ảnh gốc được chọn kỹ nhất, không phải ảnh biến thể)
+                    // Ảnh biến thể chỉ được hiển thị KHI USER CLICK vào nút chọn biến thể
+                    var mainImgSrc = !string.IsNullOrEmpty(Model.ThumbnailUrl)
+                        ? Model.ThumbnailUrl
+                        : "/images/no-image.png";
+                    var firstVariantImg = variant?.ImageUrl;
+                }
+                <img src="@mainImgSrc"
+                     class="detail-main-img" alt="@Model.Name" id="detail-main-img"
+                     data-original-src="@mainImgSrc"
+                     data-first-variant-src="@(firstVariantImg ?? mainImgSrc)" />
+            </div>
+
+            <!-- Mini badges dưới ảnh -->
+            <div class="mini-badge-row">
+                <div class="mini-badge">
+                    <i class="bi bi-shield-check text-success"></i>
+                    <span>Chính hãng</span>
+                </div>
+                <div class="mini-badge">
+                    <i class="bi bi-truck text-primary"></i>
+                    <span>Giao nhanh</span>
+                </div>
+                <div class="mini-badge">
+                    <i class="bi bi-arrow-return-left" style="color:#f59e0b;"></i>
+                    <span>Đổi trả 14 ngày</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- THÔNG TIN SẢN PHẨM -->
+        <div class="col-md-7">
+            <div class="detail-info-panel">
+
+                <!-- Brand -->
+                <div class="brand-pill">@(Model.Brand?.Name ?? "BeautyShop")</div>
+
+                <!-- Tên sản phẩm -->
+                <h1 class="product-title-h1">@Model.Name</h1>
+
+                <!-- Meta: đánh giá, đã bán -->
+                <div class="meta-row">
+                    <div class="star-row d-flex align-items-center gap-1">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <span class="review-count ms-1">(148 đánh giá)</span>
+                    </div>
+                    <span class="sold-count"><i class="bi bi-bag-check me-1 text-success"></i>Đã bán 1.7k</span>
+                    @if (variant != null && !string.IsNullOrEmpty(variant.SKU))
+                    {
+                        <span>SKU: <strong style="color:#2d3748;" id="product-sku">@variant.SKU</strong></span>
+                    }
+                </div>
+
+                <!-- GIÁ -->
+                @if (variant != null)
+                {
+                    decimal? originalPrice = variant.OriginalPrice;
+                    decimal? retailPrice = variant.RetailPrice;
+
+                    int discountPercent = 0;
+                    if (originalPrice.HasValue && retailPrice.HasValue && originalPrice.Value > retailPrice.Value && originalPrice.Value > 0)
+                    {
+                        discountPercent = (int)Math.Round((double)(originalPrice.Value - retailPrice.Value) / (double)originalPrice.Value * 100);
+                    }
+
+                    <div class="price-box">
+                        <div class="d-flex align-items-baseline flex-wrap gap-2">
+                            @if (variant.HasPrice)
+                            {
+                                <span class="price-main" id="product-price">@retailPrice!.Value.ToString("N0")đ</span>
+                                @if (originalPrice.HasValue && originalPrice.Value > retailPrice.Value)
+                                {
+                                    <span class="price-old" id="product-old-price">@originalPrice.Value.ToString("N0")đ</span>
+                                    <span class="price-discount-badge" id="product-discount">-@discountPercent%</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="price-main text-muted" id="product-price" style="font-size: 1.5rem;">Chưa thiết lập giá</span>
+                            }
+                        </div>
+                        <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
+                            <div id="stock-badge-box">
+                                @if (isAvailable)
+                                {
+                                    <span class="in-stock-badge">
+                                        <i class="bi bi-check-circle-fill"></i>Còn hàng (Còn <strong id="product-stock">@stockQuantity</strong> sản phẩm)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill fw-700" style="font-size:13.5px;border:1px solid #fca5a5;">
+                                        <i class="bi bi-x-circle-fill me-1"></i>Hết hàng (Tồn kho: 0)
+                                    </span>
+                                }
+                            </div>
+                            <span class="free-ship-note">
+                                <i class="bi bi-truck-front-fill"></i>
+                                Miễn phí vận chuyển cho đơn từ 299.000đ
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="variant-info">
+                        <span>Màu sắc: <strong id="info-color">@(variant.ColorName ?? "Không có")</strong></span>
+                        <span>Dung tích: <strong id="info-volume">@(variant.Volume ?? "Không có")</strong></span>
+                        <span>Thương hiệu: <strong>@(Model.Brand?.Name ?? "Quốc tế")</strong></span>
+                    </div>
+
+                    @if (ViewBag.AvailableVouchers is List<BeautyShop.Models.Voucher> availVouchers && availVouchers.Any())
+                    {
+                        <div class="product-voucher-widget mb-3 p-3 rounded-3" style="background:#f0fdf4;border:1.5px dashed #86efac;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-dark small">
+                                    <i class="bi bi-ticket-perforated-fill text-success me-1"></i> Mã Giảm Giá Của Shop
+                                </span>
+                                <a asp-controller="Voucher" asp-action="Index" class="small fw-bold text-success text-decoration-none">
+                                    Xem tất cả mã ➔
+                                </a>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var v in availVouchers)
+                                {
+                                    <div class="d-flex align-items-center bg-white px-2 py-1 rounded-2 border shadow-sm" style="font-size:12px;">
+                                        <span class="text-danger fw-bold me-1">
+                                            🏷️ @(v.DiscountType == "Percent" ? $"Giảm {v.DiscountValue:G29}%" : $"Giảm {v.DiscountValue:N0}đ")
+                                        </span>
+                                        <span class="text-muted me-2" style="font-size:11px;">
+                                            (Đơn từ @(v.MinOrderValue > 0 ? $"{v.MinOrderValue:N0}đ" : "0đ"))
+                                        </span>
+                                        <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 fw-bold copy-product-voucher" data-code="@v.Code" style="font-size:11px;">
+                                            @v.Code <i class="bi bi-copy ms-1"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="price-box">
+                        <span style="color:#718096;font-size:1rem;font-weight:600;">Giá đang được cập nhật...</span>
+                    </div>
+                }
+
+                <!-- FORM THÊM VÀO GIỎ -->
+                <form asp-controller="Cart" asp-action="AddToCart" method="post" id="form-add-cart">
+                    <input type="hidden" name="productId" value="@Model.Id" />
+                    <!-- Input ẩn chứa Id biến thể được chọn gửi lên Controller -->
+                    <input type="hidden" name="variantId" id="selected-variant-id" value="@(variant?.Id)" />
+
+                    <!-- PHẦN CHỌN PHÂN LOẠI MÀU SẮC / DUNG TÍCH -->
+                    @{
+                        // Hiển thị nút biến thể chỉ khi có từ 2 biến thể trở lên,
+                        // HOẶC khi biến thể duy nhất có ColorName/Volume thực sự có ý nghĩa (không phải "Mặc định")
+                        bool shouldShowVariants = variants.Count > 1
+                            || (variants.Count == 1
+                                && (!string.IsNullOrWhiteSpace(variants[0].Volume) && !variants[0].Volume!.Equals("Mặc định", StringComparison.OrdinalIgnoreCase)
+                                    || !string.IsNullOrWhiteSpace(variants[0].ColorName) && !variants[0].ColorName!.Equals("Mặc định", StringComparison.OrdinalIgnoreCase)));
+                    }
+                    @if (shouldShowVariants)
+                    {
+                        <div class="mb-3">
+                            <label class="qty-label mb-2">Phân loại / Biến thể:</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var v in variants)
+                                {
+                                    bool isActive = variant != null && v.Id == variant.Id;
+                                    int vStock = v.Inventories != null && v.Inventories.Any()
+                                        ? v.Inventories.Sum(i => i.StockQuantity)
+                                        : 0;
+
+                                    // Tạo tên hiển thị kết hợp thông minh
+                                    string displayText;
+                                    bool hasColor = !string.IsNullOrWhiteSpace(v.ColorName) && !v.ColorName!.Equals("Mặc định", StringComparison.OrdinalIgnoreCase);
+                                    bool hasVolume = !string.IsNullOrWhiteSpace(v.Volume) && !v.Volume!.Equals("Mặc định", StringComparison.OrdinalIgnoreCase);
+
+                                    if (hasColor && hasVolume)
+                                        displayText = $"{v.ColorName} – {v.Volume}";
+                                    else if (hasColor)
+                                        displayText = v.ColorName!;
+                                    else if (hasVolume)
+                                        displayText = v.Volume!;
+                                    else
+                                        displayText = $"Phân loại {v.Id}";
+
+                                    <button type="button"
+                                            class="variant-btn-option @(isActive ? "active" : "") @(vStock <= 0 ? "out-of-stock-variant" : "")"
+                                            data-variant-id="@v.Id"
+                                            data-sku="@v.SKU"
+                                            data-has-price="@(v.HasPrice ? "true" : "false")"
+                                            data-price="@(v.RetailPrice?.ToString("F0") ?? "0")"
+                                            data-original="@(v.OriginalPrice?.ToString("F0") ?? "0")"
+                                            data-volume="@(v.Volume ?? "")"
+                                            data-colorname="@(v.ColorName ?? "")"
+                                            data-image="@(isActive ? mainImgSrc : (v.ImageUrl ?? ""))"
+                                            data-stock="@vStock"
+                                            title="@displayText @(!v.HasPrice ? "(Chưa thiết lập giá)" : (vStock <= 0 ? "(Hết hàng)" : $"(Còn {vStock} sản phẩm)"))">
+
+                                        @if (!string.IsNullOrEmpty(v.ColorCode))
+                                        {
+                                            <span style="width:14px;height:14px;border-radius:50%;background:@v.ColorCode;display:inline-block;border:1px solid #cbd5e1;flex-shrink:0;"></span>
+                                        }
+                                        <span>@displayText</span>
+                                        @if (!v.HasPrice)
+                                        {
+                                            <span style="font-size:10px;color:#f59e0b;margin-left:2px;">(Chưa giá)</span>
+                                        }
+                                        else if (vStock <= 0)
+                                        {
+                                            <span style="font-size:10px;color:#ef4444;margin-left:2px;">(Hết)</span>
+                                        }
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <div class="d-flex align-items-end gap-4 mb-4 flex-wrap">
+                        <div>
+                            <div class="qty-label">Số lượng</div>
+                            <div class="qty-wrap-outer" style="@(isOutOfStock || (variant != null && !variant.HasPrice) ? "opacity:0.5;pointer-events:none;" : "")">
+                                <button type="button" class="qty-btn" id="btn-minus" @(isOutOfStock || (variant != null && !variant.HasPrice) ? "disabled" : "")>
+                                    <i class="bi bi-dash-lg"></i>
+                                </button>
+                                <input type="text"
+                                       name="quantity"
+                                       class="qty-number"
+                                       value="@(isOutOfStock || (variant != null && !variant.HasPrice) ? "0" : "1")"
+                                       id="qty-value"
+                                       readonly
+                                       data-max="@stockQuantity"
+                                       style="width:58px;height:46px;border:none;border-left:1px solid #edf2f7;border-right:1px solid #edf2f7;text-align:center;font-size:1.1rem;font-weight:800;color:#1a1a2e;background:#fff;outline:none;" />
+                                <button type="button" class="qty-btn" id="btn-plus" @(isOutOfStock || (variant != null && !variant.HasPrice) ? "disabled" : "")>
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        @if (variant != null)
+                        {
+                            <div id="delivery-status-box">
+                                @if (!variant.HasPrice)
+                                {
+                                    <div class="text-warning-emphasis fw-700" style="font-size:13px;margin-bottom:6px;">
+                                        <i class="bi bi-exclamation-circle me-1"></i>Sản phẩm chưa thiết lập giá bán
+                                    </div>
+                                }
+                                else if (!isOutOfStock)
+                                {
+                                    <div class="text-success fw-700" style="font-size:13px;margin-bottom:6px;">
+                                        <i class="bi bi-check-circle me-1"></i>Giao hàng hôm nay
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-danger fw-700" style="font-size:13px;margin-bottom:6px;">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Sản phẩm tạm thời hết hàng
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <!-- NÚT THÊM VÀO GIỎ & MUA NGAY -->
+                    <div class="d-flex flex-column gap-2 w-100" id="cart-actions-box">
+                        @if (variant != null && !variant.HasPrice)
+                        {
+                            <button type="button" class="btn-add-to-cart disabled" id="btn-add-cart" disabled style="background:#cbd5e1;color:#64748b;cursor:not-allowed;box-shadow:none;">
+                                <i class="bi bi-tag-fill fs-5" id="icon-add-cart"></i>
+                                <span id="text-add-cart">CHƯA THIẾT LẬP GIÁ</span>
+                            </button>
+
+                            <a href="#" class="btn-buy-now disabled" id="btn-buy-now" style="background:#f1f5f9;color:#94a3b8;cursor:not-allowed;border:1px solid #cbd5e1;pointer-events:none;">
+                                <i class="bi bi-slash-circle" id="icon-buy-now"></i>
+                                <span id="text-buy-now">CHƯA MỞ BÁN</span>
+                            </a>
+                        }
+                        else if (!isOutOfStock)
+                        {
+                            <button type="submit" class="btn-add-to-cart" id="btn-add-cart">
+                                <i class="bi bi-cart-plus fs-5" id="icon-add-cart"></i>
+                                <span id="text-add-cart">THÊM VÀO GIỎ HÀNG</span>
+                            </button>
+
+                            <a asp-controller="Cart" asp-action="Index" class="btn-buy-now" id="btn-buy-now">
+                                <i class="bi bi-lightning-charge-fill text-warning" id="icon-buy-now"></i>
+                                <span id="text-buy-now">Mua ngay – Giao nhanh</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn-add-to-cart disabled" id="btn-add-cart" disabled style="background:#cbd5e1;color:#64748b;cursor:not-allowed;box-shadow:none;">
+                                <i class="bi bi-x-circle-fill fs-5" id="icon-add-cart"></i>
+                                <span id="text-add-cart">TẠM HẾT HÀNG</span>
+                            </button>
+
+                            <a href="#" class="btn-buy-now disabled" id="btn-buy-now" style="background:#f1f5f9;color:#94a3b8;cursor:not-allowed;border:1px solid #cbd5e1;pointer-events:none;">
+                                <i class="bi bi-slash-circle" id="icon-buy-now"></i>
+                                <span id="text-buy-now">HẾT HÀNG TẠI KHO</span>
+                            </a>
+                        }
+                    </div>
+                </form>
+
+                <!-- TRUST GRID -->
+                <div class="trust-grid">
+                    <div class="trust-item">
+                        <i class="bi bi-shield-check"></i>
+                        <span>100% Chính hãng</span>
+                    </div>
+                    <div class="trust-item">
+                        <i class="bi bi-arrow-return-left"></i>
+                        <span>Đổi trả 14 ngày</span>
+                    </div>
+                    <div class="trust-item">
+                        <i class="bi bi-truck"></i>
+                        <span>Miễn phí vận chuyển</span>
+                    </div>
+                    <div class="trust-item">
+                        <i class="bi bi-headset"></i>
+                        <span>Hỗ trợ 24/7</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TABS MÔ TẢ ===== -->
+    <div class="card border-0 shadow-sm mb-4" style="border-radius:20px;overflow:hidden;">
+        <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+            <ul class="nav custom-tabs" id="productTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-desc" type="button">
+                        Mô tả sản phẩm
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ingr" type="button">
+                        Thành phần
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-usage" type="button">
+                        Cách sử dụng
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body p-4 p-md-5">
+            <div class="tab-content">
+
+                <div class="tab-pane fade show active" id="tab-desc" role="tabpanel">
+                    @if (!string.IsNullOrEmpty(Model.Description))
+                    {
+                        <div style="line-height:1.85;color:#4a5568;font-size:15px;">
+                            @Html.Raw(Model.Description.Replace("\n", "<br/>"))
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="bi bi-file-text" style="font-size:3rem;color:#e2e8f0;"></i>
+                            <p class="text-muted mt-3 fw-600">Mô tả sản phẩm đang được cập nhật.</p>
+                        </div>
+                    }
+                </div>
+
+                <div class="tab-pane fade" id="tab-ingr" role="tabpanel">
+                    @if (!string.IsNullOrEmpty(Model.Ingredients))
+                    {
+                        <div style="line-height:1.85;color:#4a5568;font-size:15px;">
+                            @Html.Raw(Model.Ingredients.Replace("\n", "<br/>"))
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="bi bi-list-ul" style="font-size:3rem;color:#e2e8f0;"></i>
+                            <p class="text-muted mt-3 fw-600">Thông tin thành phần đang được cập nhật.</p>
+                        </div>
+                    }
+                </div>
+
+                <div class="tab-pane fade" id="tab-usage" role="tabpanel">
+                    @if (!string.IsNullOrEmpty(Model.HowToUse))
+                    {
+                        <div style="line-height:1.85;color:#4a5568;font-size:15px;">
+                            @Html.Raw(Model.HowToUse.Replace("\n", "<br/>"))
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="bi bi-info-circle" style="font-size:3rem;color:#e2e8f0;"></i>
+                            <p class="text-muted mt-3 fw-600">Hướng dẫn sử dụng đang được cập nhật.</p>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ĐÁNH GIÁ SẢN PHẨM ===== -->
+    @{
+        var reviews = ViewBag.Reviews as List<BeautyShop.Models.Review>;
+    }
+    <div class="card border-0 shadow-sm" style="border-radius:20px;overflow:hidden;">
+
+        <div class="card-header bg-white py-4 px-4" style="border-bottom:1.5px solid #edf2f7;">
+            <div class="d-flex align-items-center justify-content-between">
+                <h4 class="mb-0 fw-800" style="font-size:1.2rem;">
+                    <i class="bi bi-star-half me-2 text-warning"></i>Đánh giá sản phẩm
+                </h4>
+                @if (reviews != null && reviews.Any())
+                {
+                    <span style="background:#e6f5ef;color:#006E4A;font-size:13px;padding:6px 14px;border-radius:20px;font-weight:700;">
+                        @reviews.Count đánh giá
+                    </span>
+                }
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+
+            @if (reviews != null && reviews.Any())
+            {
+                <!-- TỔNG HỢP ĐÁNH GIÁ -->
+                <div class="rating-summary-box">
+                    <div class="text-center" style="min-width:90px;">
+                        <div class="big-score">4.8</div>
+                        <div class="mt-1">
+                            @for (int s = 1; s <= 5; s++)
+                            {
+                                <i class="bi bi-star-fill star-yellow"></i>
+                            }
+                        </div>
+                        <div style="font-size:12px;color:#718096;font-weight:600;margin-top:4px;">@reviews.Count đánh giá</div>
+                    </div>
+                    <div class="flex-grow-1">
+                        @for (int star = 5; star >= 1; star--)
+                        {
+                            int cnt = reviews.Count(r => r.Rating == star);
+                            int pct = reviews.Any() ? (int)((cnt * 100.0) / reviews.Count) : 0;
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span style="font-size:12px;font-weight:700;color:#718096;width:14px;">@star</span>
+                                <i class="bi bi-star-fill" style="color:#f59e0b;font-size:0.72rem;"></i>
+                                <div style="flex:1;height:8px;background:#edf2f7;border-radius:4px;overflow:hidden;">
+                                    <div style="height:100%;width:@pct%;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:4px;"></div>
+                                </div>
+                                <span style="font-size:12px;font-weight:600;color:#718096;width:20px;">@cnt</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- DANH SÁCH ĐÁNH GIÁ -->
+                @foreach (var review in reviews)
+                {
+                    <div class="review-card">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="review-avatar">
+                                @(review.User?.FullName?.Length > 0 ? review.User.FullName[0].ToString().ToUpper() : "U")
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <div>
+                                        <strong style="font-size:15px;color:#1a1a2e;">@(review.User?.FullName ?? "Người dùng")</strong>
+                                        <div class="mt-1">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                <i class="bi @(i <= review.Rating ? "bi-star-fill" : "bi-star")"
+                                                   style="@(i <= review.Rating ? "color:#f59e0b;" : "color:#e2e8f0;")font-size:0.85rem;"></i>
+                                            }
+                                        </div>
+                                    </div>
+                                    <small style="color:#a0aec0;font-weight:600;font-size:12px;">
+                                        @review.CreatedAt.ToString("dd/MM/yyyy")
+                                    </small>
+                                </div>
+                                <p class="mb-0 mt-2" style="font-size:14px;line-height:1.65;color:#4a5568;">
+                                    @review.Comment
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-chat-square-heart" style="font-size:3.5rem;color:#fda4af;"></i>
+                    <h6 class="fw-800 mt-3 mb-1" style="color:#2d3748;">Chưa có đánh giá nào</h6>
+                    <p class="text-muted fw-600" style="font-size:14px;">
+                        Hãy là người đầu tiên đánh giá sản phẩm này!
+                    </p>
+                </div>
+            }
+
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // === XỬ LÝ CHỌN PHÂN LOẠI MÀU SẮC / DUNG TÍCH ===
+            const variantButtons = document.querySelectorAll(".variant-btn-option");
+            const selectedVariantInput = document.getElementById("selected-variant-id");
+            const priceEl = document.getElementById("product-price");
+            const oldPriceEl = document.getElementById("product-old-price");
+            const discountEl = document.getElementById("product-discount");
+            const skuEl = document.getElementById("product-sku");
+            const infoColorEl = document.getElementById("info-color");
+            const infoVolumeEl = document.getElementById("info-volume");
+            const mainImgEl = document.getElementById("detail-main-img");
+
+            variantButtons.forEach(btn => {
+                btn.addEventListener("click", function () {
+                    variantButtons.forEach(b => b.classList.remove("active"));
+                    this.classList.add("active");
+
+                    const id = this.getAttribute("data-variant-id");
+                    const sku = this.getAttribute("data-sku");
+                    const hasPrice = this.getAttribute("data-has-price") === "true";
+                    const price = parseFloat(this.getAttribute("data-price")) || 0;
+                    const original = parseFloat(this.getAttribute("data-original")) || 0;
+                    const colorName = this.getAttribute("data-colorname");
+                    const volume = this.getAttribute("data-volume");
+                    const imageUrl = this.getAttribute("data-image");
+                    const stock = parseInt(this.getAttribute("data-stock")) || 0;
+
+                    if (selectedVariantInput) selectedVariantInput.value = id;
+                    if (skuEl) skuEl.innerText = sku;
+                    if (infoColorEl) infoColorEl.innerText = colorName || "Không có";
+                    if (infoVolumeEl) infoVolumeEl.innerText = volume || "Không có";
+
+                    // Cập nhật các phần tử điều khiển số lượng và nút mua
+                    const qtyInput = document.getElementById("qty-value");
+                    const qtyWrap = document.querySelector(".qty-wrap-outer");
+                    const btnMinus = document.getElementById("btn-minus");
+                    const btnPlus = document.getElementById("btn-plus");
+                    const stockBadgeBox = document.getElementById("stock-badge-box");
+                    const deliveryStatusBox = document.getElementById("delivery-status-box");
+                    const btnAddCart = document.getElementById("btn-add-cart");
+                    const textAddCart = document.getElementById("text-add-cart");
+                    const iconAddCart = document.getElementById("icon-add-cart");
+                    const btnBuyNow = document.getElementById("btn-buy-now");
+                    const textBuyNow = document.getElementById("text-buy-now");
+                    const iconBuyNow = document.getElementById("icon-buy-now");
+
+                    if (!hasPrice) {
+                        if (priceEl) priceEl.innerText = "Chưa thiết lập giá";
+                        if (oldPriceEl) oldPriceEl.style.display = "none";
+                        if (discountEl) discountEl.style.display = "none";
+                        if (deliveryStatusBox) {
+                            deliveryStatusBox.innerHTML = '<div class="text-warning-emphasis fw-700" style="font-size:13px;margin-bottom:6px;"><i class="bi bi-exclamation-circle me-1"></i>Sản phẩm chưa thiết lập giá bán</div>';
+                        }
+                        if (btnAddCart) {
+                            btnAddCart.disabled = true;
+                            btnAddCart.classList.add("disabled");
+                            btnAddCart.style.background = "#cbd5e1";
+                            btnAddCart.style.color = "#64748b";
+                            btnAddCart.style.cursor = "not-allowed";
+                            btnAddCart.style.boxShadow = "none";
+                            if (textAddCart) textAddCart.innerText = "CHƯA THIẾT LẬP GIÁ";
+                            if (iconAddCart) iconAddCart.className = "bi bi-tag-fill fs-5";
+                        }
+                        if (btnBuyNow) {
+                            btnBuyNow.classList.add("disabled");
+                            btnBuyNow.style.background = "#f1f5f9";
+                            btnBuyNow.style.color = "#94a3b8";
+                            btnBuyNow.style.cursor = "not-allowed";
+                            btnBuyNow.style.border = "1px solid #cbd5e1";
+                            btnBuyNow.style.pointerEvents = "none";
+                            if (textBuyNow) textBuyNow.innerText = "CHƯA MỞ BÁN";
+                            if (iconBuyNow) iconBuyNow.className = "bi bi-slash-circle me-1";
+                        }
+                        if (qtyWrap) {
+                            qtyWrap.style.opacity = "0.5";
+                            qtyWrap.style.pointerEvents = "none";
+                        }
+                        if (btnMinus) btnMinus.disabled = true;
+                        if (btnPlus) btnPlus.disabled = true;
+                        if (qtyInput) {
+                            qtyInput.setAttribute("data-max", 0);
+                            qtyInput.value = 0;
+                        }
+                        return;
+                    }
+
+                    if (priceEl) priceEl.innerText = price.toLocaleString("vi-VN") + "đ";
+
+                    if (stock > 0) {
+                        if (qtyWrap) {
+                            qtyWrap.style.opacity = "1";
+                            qtyWrap.style.pointerEvents = "auto";
+                        }
+                        if (btnMinus) btnMinus.disabled = false;
+                        if (btnPlus) btnPlus.disabled = false;
+                        if (qtyInput) {
+                            qtyInput.setAttribute("data-max", stock);
+                            let currentVal = parseInt(qtyInput.value) || 1;
+                            if (currentVal < 1) currentVal = 1;
+                            if (currentVal > stock) currentVal = stock;
+                            qtyInput.value = currentVal;
+                        }
+
+                        if (stockBadgeBox) {
+                            stockBadgeBox.innerHTML = '<span class="in-stock-badge"><i class="bi bi-check-circle-fill"></i>Còn hàng (Còn <strong id="product-stock">' + stock + '</strong> sản phẩm)</span>';
+                        }
+                        if (deliveryStatusBox) {
+                            deliveryStatusBox.innerHTML = '<div class="text-success fw-700" style="font-size:13px;margin-bottom:6px;"><i class="bi bi-check-circle me-1"></i>Giao hàng hôm nay</div>';
+                        }
+                        if (btnAddCart) {
+                            btnAddCart.disabled = false;
+                            btnAddCart.classList.remove("disabled");
+                            btnAddCart.style.background = "";
+                            btnAddCart.style.color = "";
+                            btnAddCart.style.cursor = "";
+                            btnAddCart.style.boxShadow = "";
+                            if (textAddCart) textAddCart.innerText = "THÊM VÀO GIỎ HÀNG";
+                            if (iconAddCart) iconAddCart.className = "bi bi-cart-plus fs-5";
+                        }
+                        if (btnBuyNow) {
+                            btnBuyNow.classList.remove("disabled");
+                            btnBuyNow.style.background = "";
+                            btnBuyNow.style.color = "";
+                            btnBuyNow.style.cursor = "";
+                            btnBuyNow.style.border = "";
+                            btnBuyNow.style.pointerEvents = "";
+                            if (textBuyNow) textBuyNow.innerText = "Mua ngay – Giao nhanh";
+                            if (iconBuyNow) iconBuyNow.className = "bi bi-lightning-charge-fill text-warning";
+                        }
+                    } else {
+                        if (qtyWrap) {
+                            qtyWrap.style.opacity = "0.5";
+                            qtyWrap.style.pointerEvents = "none";
+                        }
+                        if (btnMinus) btnMinus.disabled = true;
+                        if (btnPlus) btnPlus.disabled = true;
+                        if (qtyInput) {
+                            qtyInput.setAttribute("data-max", 0);
+                            qtyInput.value = 0;
+                        }
+
+                        if (stockBadgeBox) {
+                            stockBadgeBox.innerHTML = '<span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill fw-700" style="font-size:13.5px;border:1px solid #fca5a5;"><i class="bi bi-x-circle-fill me-1"></i>Hết hàng (Tồn kho: 0)</span>';
+                        }
+                        if (deliveryStatusBox) {
+                            deliveryStatusBox.innerHTML = '<div class="text-danger fw-700" style="font-size:13px;margin-bottom:6px;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sản phẩm tạm thời hết hàng</div>';
+                        }
+                        if (btnAddCart) {
+                            btnAddCart.disabled = true;
+                            btnAddCart.classList.add("disabled");
+                            btnAddCart.style.background = "#cbd5e1";
+                            btnAddCart.style.color = "#64748b";
+                            btnAddCart.style.cursor = "not-allowed";
+                            btnAddCart.style.boxShadow = "none";
+                            if (textAddCart) textAddCart.innerText = "TẠM HẾT HÀNG";
+                            if (iconAddCart) iconAddCart.className = "bi bi-x-circle-fill fs-5";
+                        }
+                        if (btnBuyNow) {
+                            btnBuyNow.classList.add("disabled");
+                            btnBuyNow.style.background = "#f1f5f9";
+                            btnBuyNow.style.color = "#94a3b8";
+                            btnBuyNow.style.cursor = "not-allowed";
+                            btnBuyNow.style.border = "1px solid #cbd5e1";
+                            btnBuyNow.style.pointerEvents = "none";
+                            if (textBuyNow) textBuyNow.innerText = "HẾT HÀNG TẠI KHO";
+                            if (iconBuyNow) iconBuyNow.className = "bi bi-slash-circle me-1";
+                        }
+                    }
+
+                    // === CẬP NHẬT ẢNH SẢN PHẨM THEO BIẾN THỂ ===
+                    // Ưu tiên: ImageUrl của variant → nếu không có → ThumbnailUrl gốc của sản phẩm
+                    const originalSrc = mainImgEl ? mainImgEl.getAttribute("data-original-src") : "";
+                    if (mainImgEl) {
+                        if (imageUrl && imageUrl.trim() !== "") {
+                            // Variant này có ảnh riêng → hiển thị ảnh đó
+                            mainImgEl.src = imageUrl.trim();
+                        } else {
+                            // Variant không có ảnh riêng → fallback về ThumbnailUrl gốc của sản phẩm
+                            mainImgEl.src = originalSrc || "";
+                        }
+                    }
+
+                    if (original > price) {
+                        if (oldPriceEl) {
+                            oldPriceEl.innerText = original.toLocaleString("vi-VN") + "đ";
+                            oldPriceEl.style.display = "inline";
+                        }
+                        if (discountEl) {
+                            const discountPercent = Math.round(((original - price) / original) * 100);
+                            discountEl.innerText = "-" + discountPercent + "%";
+                            discountEl.style.display = "inline";
+                        }
+                    } else {
+                        if (oldPriceEl) oldPriceEl.style.display = "none";
+                        if (discountEl) discountEl.style.display = "none";
+                    }
+                });
+            });
+
+            // === TĂNG GIẢM SỐ LƯỢNG ===
+            var qtyInput = document.getElementById("qty-value");
+            var btnMinus = document.getElementById("btn-minus");
+            var btnPlus  = document.getElementById("btn-plus");
+
+            if (btnMinus && qtyInput) {
+                btnMinus.addEventListener("click", function () {
+                    var val = parseInt(qtyInput.value) || 1;
+                    if (val > 1) qtyInput.value = val - 1;
+                });
+            }
+            if (btnPlus && qtyInput) {
+                btnPlus.addEventListener("click", function () {
+                    var val = parseInt(qtyInput.value) || 1;
+                    var maxStock = parseInt(qtyInput.getAttribute("data-max")) || 999;
+                    if (val < maxStock) {
+                        qtyInput.value = val + 1;
+                    } else {
+                        if (window.showToast) window.showToast("Kho chỉ còn tối đa " + maxStock + " sản phẩm!", "warning");
+                    }
+                });
+            }
+
+            // === NÚT YÊU THÍCH ===
+            var wlBtn = document.getElementById("detail-wishlist-btn");
+            if (wlBtn) {
+                wlBtn.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    var icon = this.querySelector("i");
+                    if (icon.classList.contains("bi-heart")) {
+                        icon.classList.replace("bi-heart", "bi-heart-fill");
+                        this.style.background = "#e53935";
+                        this.style.color = "#fff";
+                        if (window.showToast) window.showToast("Đã thêm vào danh sách yêu thích!", "success");
+                    } else {
+                        icon.classList.replace("bi-heart-fill", "bi-heart");
+                        this.style.background = "#fff";
+                        this.style.color = "#e53935";
+                        if (window.showToast) window.showToast("Đã xóa khỏi danh sách yêu thích!", "warning");
+                    }
+                    var href = wlBtn.getAttribute("href");
+                    if (href && href !== "#") fetch(href);
+                });
+            }
+
+            // === HIỆU ỨNG 3D FLY-TO-CART & THÊM VÀO GIỎ HÀNG (AJAX) ===
+            var formAddCart = document.getElementById("form-add-cart");
+            var addBtn = document.getElementById("btn-add-cart");
+            if (formAddCart && addBtn) {
+                formAddCart.addEventListener("submit", function (e) {
+                    e.preventDefault();
+
+                    var mainImg = document.getElementById("detail-main-img");
+                    var targetCart = document.getElementById("header-cart");
+
+                    // 1. Kích hoạt hiệu ứng 3D Fly-to-Cart bay mô hình ảnh vào giỏ hàng
+                    if (window.flyToCart && mainImg && targetCart) {
+                        window.flyToCart(mainImg, targetCart);
+                    }
+
+                    // 2. Trạng thái phản hồi trên nút bấm
+                    var origHtml = addBtn.innerHTML;
+                    addBtn.disabled = true;
+                    addBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> ĐANG THÊM...';
+
+                    // 3. Gửi Ajax thêm vào giỏ hàng
+                    var formData = new FormData(formAddCart);
+                    fetch(formAddCart.action || '/Cart/AddToCart', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(function(res) {
+                        return res.json();
+                    })
+                    .then(function(data) {
+                        addBtn.disabled = false;
+                        if (data && data.success) {
+                            // Cập nhật số lượng giỏ hàng trên Header & hiệu ứng pop
+                            if (window.updateCartBadge && typeof data.totalQuantity !== 'undefined') {
+                                window.updateCartBadge(data.totalQuantity);
+                            }
+
+                            // Trạng thái thành công trên nút
+                            addBtn.innerHTML = '<i class="bi bi-check-circle-fill fs-5"></i> ĐÃ THÊM VÀO GIỎ HÀNG';
+                            addBtn.style.background = "linear-gradient(135deg, #2d6a4f, #40916c)";
+                            if (window.showToast) {
+                                window.showToast(data.message || "Đã thêm sản phẩm vào giỏ hàng!", "success");
+                            }
+
+                            setTimeout(function() {
+                                addBtn.innerHTML = origHtml;
+                                addBtn.style.background = "";
+                            }, 2500);
+                        } else if (data && data.requireLogin) {
+                            addBtn.innerHTML = origHtml;
+                            if (window.showToast) {
+                                window.showToast(data.message || "Vui lòng đăng nhập để thêm vào giỏ hàng!", "warning");
+                            }
+                            setTimeout(function() {
+                                window.location.href = data.redirectUrl || '/Account/Login';
+                            }, 1200);
+                        } else {
+                            addBtn.innerHTML = origHtml;
+                            if (window.showToast) {
+                                window.showToast((data && data.message) ? data.message : "Không thể thêm vào giỏ hàng!", "danger");
+                            }
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error("Cart error:", err);
+                        addBtn.disabled = false;
+                        addBtn.innerHTML = origHtml;
+                        // Fallback submit bình thường nếu lỗi mạng
+                        formAddCart.submit();
+                    });
+                });
+            }
+
+            // === SAO CHÉP MÃ VOUCHER TRANG CHI TIẾT ===
+            document.querySelectorAll('.copy-product-voucher').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var code = this.getAttribute('data-code');
+                    navigator.clipboard.writeText(code).then(function() {
+                        if (window.showToast) {
+                            window.showToast('Đã sao chép mã ' + code + '! Bạn có thể dùng khi thanh toán.', 'success');
+                        } else {
+                            alert('Đã sao chép mã: ' + code);
+                        }
+                    });
+                });
+            });
+
+        });
+    </script>
+}

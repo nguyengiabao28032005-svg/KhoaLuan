@@ -1,0 +1,195 @@
+@model BeautyShop.Models.FlashSale
+
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Quản lý sản phẩm Flash Sale";
+}
+
+@section Styles {
+    <style>
+        .page-title {
+            color: #1e293b;
+            font-weight: 700;
+        }
+
+        .form-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: var(--shadow-sm);
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+        }
+
+        /* Table Styling */
+        .table-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .table-admin th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            padding: 15px 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .table-admin td {
+            vertical-align: middle;
+            padding: 15px 20px;
+            color: #334155;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .table-admin tr:last-child td {
+            border-bottom: none;
+        }
+
+        .btn-action {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: var(--transition);
+        }
+    </style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="page-title mb-0">
+            <i class="bi bi-lightning-charge-fill text-warning me-2"></i>@Model.Name
+        </h2>
+        <small class="text-muted">Quản lý sản phẩm trong chương trình Flash Sale</small>
+    </div>
+
+    <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 fw-medium">
+        <i class="bi bi-arrow-left me-1"></i> Quay lại
+    </a>
+</div>
+
+<div class="form-card">
+    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-plus-circle-dotted me-2 text-primary"></i>Thêm sản phẩm vào Flash Sale</h5>
+
+    <form asp-action="AddItem" method="post">
+        <input type="hidden" name="flashSaleId" value="@ViewBag.FlashSaleId" />
+
+        <div class="row g-3 align-items-end">
+
+            <div class="col-md-4">
+                <label class="form-label">Sản phẩm áp dụng</label>
+                <select name="variantId" class="form-select shadow-sm">
+                    @foreach (var item in ViewBag.Variants)
+                    {
+                        <option value="@item.Id">
+                            @item.Product.Name - @item.Volume - @item.RetailPrice.ToString("N0") đ
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Giá Flash Sale</label>
+                <input type="number" step="1000" name="promotionPrice" class="form-control shadow-sm" placeholder="Nhập giá sale..." required />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">SL Giới hạn</label>
+                <input type="number" name="quantityLimit" class="form-control shadow-sm" placeholder="Tổng số lượng..." required />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Giới hạn / User</label>
+                <input type="number" name="maxQuantityPerUser" class="form-control shadow-sm" placeholder="SL / Khách..." required />
+            </div>
+
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100 fw-medium shadow-sm py-2">
+                    <i class="bi bi-plus-lg me-1"></i> Thêm vào
+                </button>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+<h5 class="fw-bold text-dark mb-3">Danh sách sản phẩm thuộc chiến dịch</h5>
+<div class="table-card mb-5">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle table-admin mb-0">
+            <thead>
+                <tr>
+                    <th class="ps-4">Sản phẩm</th>
+                    <th>SKU</th>
+                    <th>Dung tích</th>
+                    <th class="text-end">Giá gốc</th>
+                    <th class="text-end">Giá Flash Sale</th>
+                    <th class="text-center">Giới hạn</th>
+                    <th class="text-center">Đã bán</th>
+                    <th class="text-center">Max/User</th>
+                    <th class="text-center pe-4" width="100">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.FlashSaleItems != null && Model.FlashSaleItems.Any())
+                {
+                    foreach (var item in Model.FlashSaleItems)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <strong class="text-dark">@item.Variant?.Product?.Name</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border font-monospace small">@(item.Variant?.SKU ?? "N/A")</span>
+                            </td>
+                            <td>@(item.Variant?.Volume ?? "N/A")</td>
+                            <td class="text-end text-muted text-decoration-line-small">
+                                @(item.Variant?.RetailPrice?.ToString("N0") ?? "0") đ
+                            </td>
+                            <td class="text-end">
+                                <span class="text-danger fw-bold">@item.PromotionPrice.ToString("N0") đ</span>
+                            </td>
+                            <td class="text-center fw-medium">@item.QuantityLimit</td>
+                            <td class="text-center text-success fw-medium">@item.SoldQuantity</td>
+                            <td class="text-center">@item.MaxQuantityPerUser</td>
+                            <td class="text-center pe-4">
+                                <a asp-action="RemoveItem" asp-route-id="@item.Id" class="btn btn-outline-danger btn-action" title="Xóa sản phẩm khỏi Flash Sale" onclick="return confirm('Bạn có chắc muốn xóa sản phẩm này khỏi chiến dịch không?');">
+                                    <i class="bi bi-trash3"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                            Chưa có sản phẩm nào trong Flash Sale. Hãy thêm sản phẩm ở biểu mẫu phía trên!
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

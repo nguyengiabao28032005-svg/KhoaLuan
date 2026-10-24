@@ -1,0 +1,294 @@
+@model IEnumerable<BeautyShop.Models.Order>
+
+@{
+    ViewData["Title"] = "Đơn hàng của tôi";
+}
+
+<div class="py-2">
+
+    <!-- HEADER -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#006E4A,#009665);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.5rem;box-shadow:0 4px 16px rgba(0,110,74,0.3);">
+            <i class="bi bi-box-seam"></i>
+        </div>
+        <div>
+            <h2 class="fw-900 mb-0" style="font-size:1.6rem;color:#1a1a2e;">Đơn hàng của tôi</h2>
+            <p class="text-muted fw-600 mb-0" style="font-size:14px;">Theo dõi và quản lý các đơn hàng của bạn</p>
+        </div>
+    </div>
+
+    @if (Model == null || !Model.Any())
+    {
+        <div style="background:#fff;border-radius:20px;padding:80px 40px;text-align:center;border:1.5px solid #edf2f7;box-shadow:0 2px 16px rgba(0,0,0,0.05);">
+            <i class="bi bi-box" style="font-size:5rem;color:#e2e8f0;"></i>
+            <h4 class="fw-800 mb-2 mt-4" style="color:#2d3748;">Bạn chưa có đơn hàng nào</h4>
+            <p class="text-muted mb-4">Cùng khám phá các sản phẩm làm đẹp đang có ưu đãi lớn nhé!</p>
+            <a asp-controller="Product" asp-action="Index" class="btn btn-hasaki rounded-pill px-5 py-3 fw-800" id="orders-go-shop">
+                <i class="bi bi-bag-heart me-2"></i>Bắt đầu mua sắm
+            </a>
+        </div>
+    }
+    else
+    {
+        <!-- Status filter tabs -->
+        <div class="d-flex gap-2 mb-4 flex-wrap">
+            <button class="order-filter-btn active" data-status="all" id="filter-all">Tất cả</button>
+            <button class="order-filter-btn" data-status="Chờ xác nhận" id="filter-pending">Chờ xác nhận</button>
+            <button class="order-filter-btn" data-status="Đang giao" id="filter-shipping">Đang giao</button>
+            <button class="order-filter-btn" data-status="Hoàn thành" id="filter-done">Hoàn thành</button>
+            <button class="order-filter-btn" data-status="Đã hủy" id="filter-cancel">Đã hủy</button>
+        </div>
+
+        <style>
+            .order-filter-btn {
+                background: #fff;
+                border: 1.5px solid #e2e8f0;
+                border-radius: 20px;
+                padding: 7px 18px;
+                font-size: 13px;
+                font-weight: 700;
+                color: #718096;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+                .order-filter-btn:hover, .order-filter-btn.active {
+                    background: #006E4A;
+                    border-color: #006E4A;
+                    color: #fff;
+                }
+
+            .order-card {
+                background: #fff;
+                border-radius: 16px;
+                border: 1.5px solid #edf2f7;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+                margin-bottom: 16px;
+                overflow: hidden;
+                transition: all 0.2s;
+            }
+
+                .order-card:hover {
+                    box-shadow: 0 6px 24px rgba(0,0,0,0.10);
+                    border-color: #4db88a;
+                }
+
+            .order-card-header {
+                background: #f9fafb;
+                padding: 14px 22px;
+                border-bottom: 1px solid #edf2f7;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .order-code {
+                font-weight: 800;
+                color: #006E4A;
+                font-size: 15px;
+            }
+
+            .order-date {
+                font-size: 13px;
+                color: #718096;
+                font-weight: 600;
+            }
+
+            .order-card-body {
+                padding: 18px 22px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 14px;
+            }
+
+            .order-total {
+                font-size: 1.2rem;
+                font-weight: 900;
+                color: #e53935;
+            }
+
+            .order-status-badge {
+                padding: 5px 14px;
+                border-radius: 20px;
+                font-size: 13px;
+                font-weight: 700;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .status-pending {
+                background: #fffbeb;
+                color: #92400e;
+                border: 1px solid #fde68a;
+            }
+
+            .status-shipping {
+                background: #eff6ff;
+                color: #1d4ed8;
+                border: 1px solid #bfdbfe;
+            }
+
+            .status-done {
+                background: #e6f5ef;
+                color: #006E4A;
+                border: 1px solid #4db88a;
+            }
+
+            .status-cancel {
+                background: #fff1f0;
+                color: #c62828;
+                border: 1px solid #fca5a5;
+            }
+
+            .status-default {
+                background: #f4f6f9;
+                color: #718096;
+                border: 1px solid #e2e8f0;
+            }
+
+            .btn-order-detail {
+                background: transparent;
+                border: 2px solid #006E4A;
+                color: #006E4A;
+                border-radius: 10px;
+                padding: 8px 20px;
+                font-size: 13px;
+                font-weight: 800;
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                transition: all 0.2s;
+            }
+
+                .btn-order-detail:hover {
+                    background: #006E4A;
+                    color: #fff;
+                }
+        </style>
+
+        <div id="orders-list">
+            @foreach (var item in Model)
+            {
+                string statusClass = item.OrderStatus switch
+                {
+                    "Chờ xác nhận" => "status-pending",
+                    "Đang giao" => "status-shipping",
+                    "Hoàn thành" => "status-done",
+                    "Đã hủy" => "status-cancel",
+                    _ => "status-default"
+                };
+                string statusIcon = item.OrderStatus switch
+                {
+                    "Chờ xác nhận" => "bi-clock",
+                    "Đang giao" => "bi-truck",
+                    "Hoàn thành" => "bi-check-circle-fill",
+                    "Đã hủy" => "bi-x-circle-fill",
+                    _ => "bi-circle"
+                };
+
+                <div class="order-card" data-status="@item.OrderStatus">
+                    <div class="order-card-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="order-code"><i class="bi bi-receipt me-1"></i>#@item.OrderCode</span>
+                            <span class="order-date">
+                                <i class="bi bi-calendar3 me-1"></i>@item.CreatedAt.ToString("dd/MM/yyyy") lúc @item.CreatedAt.ToString("HH:mm")
+                            </span>
+                        </div>
+                        <span class="order-status-badge @statusClass">
+                            <i class="bi @statusIcon"></i>@item.OrderStatus
+                        </span>
+                    </div>
+                    <div class="order-card-body">
+                        <div>
+                            <div class="text-muted fw-600 mb-1" style="font-size:13px;">Tổng thanh toán</div>
+                            <div class="order-total">@item.FinalAmount.ToString("N0")đ</div>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <a asp-action="Detail" asp-route-id="@item.Id" class="btn-order-detail" id="order-detail-@item.Id">
+                                <i class="bi bi-eye"></i>Xem chi tiết
+                            </a>
+                            @if (item.OrderStatus == "Pending" || item.OrderStatus == "Chờ xác nhận")
+                            {
+                                <button type="button"
+                                        class="btn-cancel-order"
+                                        data-id="@item.Id"
+                                        data-code="@item.OrderCode"
+                                        id="btn-cancel-@item.Id"
+                                        style="background:transparent;border:2px solid #e53935;color:#e53935;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;">
+                                    <i class="bi bi-x-circle"></i>Hủy đơn
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    // ===== FILTER TABS =====
+    document.querySelectorAll('.order-filter-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.order-filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            var status = this.dataset.status;
+            document.querySelectorAll('.order-card').forEach(function(card) {
+                card.style.display = (status === 'all' || card.dataset.status === status) ? '' : 'none';
+            });
+        });
+    });
+
+    // ===== HUY DON HANG =====
+    document.querySelectorAll('.btn-cancel-order').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var orderId   = this.dataset.id;
+            var orderCode = this.dataset.code;
+
+            // Hộp xác nhận trước khi hủy
+            if (!confirm('Bạn có chắc muốn hủy đơn hàng #' + orderCode + ' không?\nHành động này không thể hoàn tác.')) return;
+
+            // Tạo form POST động và submit
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/Order/Cancel';
+
+            var inputId = document.createElement('input');
+            inputId.type  = 'hidden';
+            inputId.name  = 'id';
+            inputId.value = orderId;
+            form.appendChild(inputId);
+
+            var inputToken = document.createElement('input');
+            inputToken.type  = 'hidden';
+            inputToken.name  = '__RequestVerificationToken';
+            inputToken.value = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            form.appendChild(inputToken);
+
+            document.body.appendChild(form);
+            form.submit();
+        });
+    });
+
+    // ===== TOAST THONG BAO =====
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <text>
+        if (window.showToast) window.showToast('@TempData["SuccessMessage"]', 'success');
+        </text>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <text>
+        if (window.showToast) window.showToast('@TempData["ErrorMessage"]', 'error');
+        </text>
+    }
+</script>
+}
