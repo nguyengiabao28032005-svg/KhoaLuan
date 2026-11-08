@@ -149,16 +149,49 @@ using (var scope = app.Services.CreateScope())
             CREATE INDEX IF NOT EXISTS ""IX_StockReceiptItems_VariantId"" ON ""StockReceiptItems"" (""VariantId"");
         ");
 
-        // Cập nhật các cột mới cho StockReceipts nếu chưa có
-        try { db.Database.ExecuteSqlRaw(@"ALTER TABLE ""StockReceipts"" ADD COLUMN ""SupplierId"" INTEGER NULL;"); } catch {}
-        try { db.Database.ExecuteSqlRaw(@"ALTER TABLE ""StockReceipts"" ADD COLUMN ""InvoiceNumber"" TEXT NULL;"); } catch {}
-        try { db.Database.ExecuteSqlRaw(@"ALTER TABLE ""StockReceipts"" ADD COLUMN ""OriginCountry"" TEXT NOT NULL DEFAULT 'Việt Nam';"); } catch {}
-        try { db.Database.ExecuteSqlRaw(@"ALTER TABLE ""StockReceipts"" ADD COLUMN ""PaymentStatus"" TEXT NOT NULL DEFAULT 'Paid';"); } catch {}
-        try { db.Database.ExecuteSqlRaw(@"ALTER TABLE ""StockReceipts"" ADD COLUMN ""TotalAmount"" decimal(18,2) NOT NULL DEFAULT 0;"); } catch {}
-        try { db.Database.ExecuteSqlRaw(@"ALTER TABLE ""StockReceipts"" ADD COLUMN ""PaidAmount"" decimal(18,2) NOT NULL DEFAULT 0;"); } catch {}
-        try { db.Database.ExecuteSqlRaw(@"ALTER TABLE ""StockReceipts"" ADD COLUMN ""DebtAmount"" decimal(18,2) NOT NULL DEFAULT 0;"); } catch {}
-        try { db.Database.ExecuteSqlRaw(@"ALTER TABLE ""Orders"" ADD COLUMN ""CompletedAt"" TEXT NULL;"); } catch {}
-        try { db.Database.ExecuteSqlRaw(@"ALTER TABLE ""OrderDetails"" ADD COLUMN ""CostPrice"" decimal(18,2) NOT NULL DEFAULT 0;"); } catch {}
+        // Cập nhật các cột mới cho StockReceipts nếu chưa có (kiểm tra trước bằng PRAGMA để tránh lỗi duplicate column)
+        void EnsureColumn(string table, string column, string typeDefinition)
+        {
+            try
+            {
+                var conn = db.Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open)
+                    conn.Open();
+
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"PRAGMA table_info(\"{table}\");";
+                bool exists = false;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (string.Equals(reader["name"]?.ToString(), column, StringComparison.OrdinalIgnoreCase))
+                        {
+                            exists = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!exists)
+                {
+                    using var alterCmd = conn.CreateCommand();
+                    alterCmd.CommandText = $"ALTER TABLE \"{table}\" ADD COLUMN \"{column}\" {typeDefinition};";
+                    alterCmd.ExecuteNonQuery();
+                }
+            }
+            catch { }
+        }
+
+        EnsureColumn("StockReceipts", "SupplierId", "INTEGER NULL");
+        EnsureColumn("StockReceipts", "InvoiceNumber", "TEXT NULL");
+        EnsureColumn("StockReceipts", "OriginCountry", "TEXT NOT NULL DEFAULT 'Việt Nam'");
+        EnsureColumn("StockReceipts", "PaymentStatus", "TEXT NOT NULL DEFAULT 'Paid'");
+        EnsureColumn("StockReceipts", "TotalAmount", "decimal(18,2) NOT NULL DEFAULT 0");
+        EnsureColumn("StockReceipts", "PaidAmount", "decimal(18,2) NOT NULL DEFAULT 0");
+        EnsureColumn("StockReceipts", "DebtAmount", "decimal(18,2) NOT NULL DEFAULT 0");
+        EnsureColumn("Orders", "CompletedAt", "TEXT NULL");
+        EnsureColumn("OrderDetails", "CostPrice", "decimal(18,2) NOT NULL DEFAULT 0");
     }
     catch (Exception ex)
     {
@@ -381,7 +414,9 @@ using (var scope = app.Services.CreateScope())
                 if (!allProducts.TryGetValue(productId, out var product))
                 { cntSkip++; continue; }
 
-                if (product.CategoryId != cfg.CategoryId)
+                // Hỗ trợ cả danh mục chính (1-5) và danh mục phân loại chi tiết (6-10)
+                bool isMatchingCategory = product.CategoryId == cfg.CategoryId || product.CategoryId == cfg.CategoryId + 5;
+                if (!isMatchingCategory)
                 {
                     startLog.LogWarning(
                         "[ForceSync] SKIP - '{File}': prefix '{Pre}' (Cat {EC}) != Product {Id} (Cat {AC})",
