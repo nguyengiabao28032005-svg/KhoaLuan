@@ -1,0 +1,107 @@
+@model BeautyShop.ViewModels.AdminUserViewModel
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Chỉnh sửa nhân viên & Phạm vi kho";
+    var stores = ViewBag.Stores as List<BeautyShop.Models.Store> ?? new List<BeautyShop.Models.Store>();
+}
+
+<div class="page-hdr d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>Chỉnh Sửa Nhân Viên &amp; Phạm Vi Kho</h2>
+        <span class="ph-sub text-muted">Mọi thay đổi về vai trò hoặc phạm vi kho sẽ có hiệu lực tức thì (SecurityStamp) và được ghi vào AuditLog</span>
+    </div>
+    <a href="@Url.Action("Index", "Employees")" class="btn btn-as">
+        <i class="bi bi-arrow-left"></i> Quay lại
+    </a>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-err mb-3">
+        <i class="bi bi-exclamation-triangle me-1"></i> @TempData["ErrorMessage"]
+    </div>
+}
+
+<div class="admin-card">
+    <div class="admin-card-body">
+        <form method="post" action="@Url.Action("Edit", "Employees")">
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="FullName" class="f-label">Họ tên <span class="text-danger">*</span></label>
+                    <input asp-for="FullName" class="f-ctrl form-control" required />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+                
+                <div class="col-md-6">
+                    <label asp-for="RoleId" class="f-label">Vai trò chức năng (Functional Role) <span class="text-danger">*</span></label>
+                    <select asp-for="RoleId" class="f-ctrl form-select" required>
+                        @if (ViewBag.Roles != null)
+                        {
+                            foreach (var role in ViewBag.Roles)
+                            {
+                                <option value="@role.Id">@(role.DisplayName ?? role.Name) (@role.Name)</option>
+                            }
+                        }
+                    </select>
+                    <span asp-validation-for="RoleId" class="text-danger"></span>
+                </div>
+                
+                <div class="col-md-6">
+                    <label asp-for="Email" class="f-label">Email <span class="text-danger">*</span></label>
+                    <input asp-for="Email" type="email" class="f-ctrl form-control" required />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                
+                <div class="col-md-6">
+                    <label asp-for="PhoneNumber" class="f-label">Số điện thoại</label>
+                    <input asp-for="PhoneNumber" class="f-ctrl form-control" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                </div>
+                
+                <div class="col-md-6">
+                    <label asp-for="Password" class="f-label">Đặt lại mật khẩu mới</label>
+                    <input asp-for="Password" type="password" class="f-ctrl form-control" placeholder="Để trống nếu không đổi mật khẩu" />
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label f-label mb-0">Tài khoản đang hoạt động</label>
+                    </div>
+                </div>
+
+                <div class="col-12 mt-3">
+                    <label class="f-label">Phạm vi dữ liệu kho được gán (UserWarehouseScope)</label>
+                    <div class="alert alert-light border rounded-3 p-3">
+                        <div class="small text-muted mb-2">
+                            <i class="bi bi-shield-check me-1"></i> Nhân viên kho và Thu ngân chỉ nhìn thấy và thao tác trên dữ liệu thuộc các kho được tích chọn dưới đây. (Nếu là <strong>Admin</strong>, hệ thống tự động bỏ qua bộ lọc và không lưu dòng UserWarehouseScope).
+                        </div>
+                        <div class="row g-2">
+                            @foreach (var s in stores)
+                            {
+                                bool isChecked = Model?.SelectedStoreIds != null && Model.SelectedStoreIds.Contains(s.Id);
+                                <div class="col-md-4">
+                                    <div class="form-check p-2 border rounded bg-white">
+                                        <input class="form-check-input ms-1 me-2" type="checkbox" name="SelectedStoreIds" value="@s.Id" id="store_@s.Id" @(isChecked ? "checked" : "") />
+                                        <label class="form-check-label fw-semibold small" for="store_@s.Id">
+                                            #@s.Id - @s.Name <span class="text-muted">(@s.ProvinceName)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-ap">Cập nhật vai trò &amp; phạm vi kho</button>
+                <a href="@Url.Action("Index", "Employees")" class="btn btn-as">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>

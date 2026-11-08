@@ -1,0 +1,206 @@
+/* ========================================================
+   BEAUTYSHOP 3D DESIGN SYSTEM - SHARED CSS
+   Hệ thống thiết kế 3D dùng chung cho toàn bộ nền tảng
+   ======================================================== */
+
+:root {
+    /* Độ sâu & Bóng đổ nhiều lớp (Multi-layered elevation) */
+    --depth-1: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+    --depth-2: 0 8px 24px rgba(0, 0, 0, 0.09), 0 2px 8px rgba(0, 0, 0, 0.05);
+    --depth-3: 0 16px 40px rgba(0, 0, 0, 0.13), 0 4px 14px rgba(0, 0, 0, 0.07);
+    --depth-4: 0 28px 64px rgba(0, 0, 0, 0.18), 0 8px 24px rgba(0, 0, 0, 0.10);
+
+    /* Bóng đổ màu thương hiệu (Emerald & Gold) */
+    --depth-green: 0 12px 32px rgba(0, 110, 74, 0.22), 0 4px 12px rgba(0, 110, 74, 0.12);
+    --depth-gold: 0 12px 32px rgba(245, 158, 11, 0.25), 0 4px 12px rgba(245, 158, 11, 0.12);
+
+    /* Không gian 3D */
+    --perspective-viewport: 1200px;
+    --perspective-card: 1000px;
+    --tilt-max-customer: 8deg;
+    --tilt-max-admin: 3deg;
+
+    /* Thời gian chuyển động */
+    --transition-3d-fast: transform 0.18s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.18s ease;
+    --transition-3d-smooth: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+    --transition-btn-press: transform 0.08s ease, box-shadow 0.08s ease;
+
+    /* Màu sắc thương hiệu */
+    --bs-green-main: #006E4A;
+    --bs-green-light: #009665;
+    --bs-green-glow: rgba(0, 150, 101, 0.35);
+    --bs-gold-main: #f59e0b;
+}
+
+/* 1. KHUNG CHỨA KHÔNG GIAN 3D (Depth Container) */
+.depth-container {
+    perspective: var(--perspective-viewport);
+    perspective-origin: center center;
+    transform-style: preserve-3d;
+}
+
+/* 2. THẺ KHỐI 3D (Card 3D) */
+.card-3d {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: var(--transition-3d-smooth);
+    box-shadow: var(--depth-1);
+    border-radius: 16px;
+    background: #ffffff;
+    will-change: transform, box-shadow;
+}
+
+.card-3d:hover {
+    box-shadow: var(--depth-3);
+}
+
+/* 3. TƯƠNG TÁC TILT 3D THEO CON TRỎ CHUỘT (Interactive Tilt) */
+.tilt {
+    transform-style: preserve-3d;
+    will-change: transform;
+    transition: transform 0.12s ease-out;
+}
+
+/* Lớp ánh sáng phản chiếu chạy theo chuột (Specular Glare) */
+.glare-layer {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+.tilt:hover .glare-layer {
+    opacity: 1;
+}
+
+/* 4. NÚT BẤM CÓ CHIỀU SÂU VẬT LÝ (Tactile 3D Buttons) */
+.btn-3d {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 800;
+    font-family: inherit;
+    text-decoration: none;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 22px;
+    cursor: pointer;
+    transition: var(--transition-btn-press);
+    transform-style: preserve-3d;
+    user-select: none;
+    box-shadow: 0 4px 0 #003d29, 0 6px 16px rgba(0, 110, 74, 0.28);
+    background: linear-gradient(135deg, #006E4A 0%, #009665 100%);
+    color: #ffffff !important;
+}
+
+.btn-3d:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #003d29, 0 10px 24px rgba(0, 110, 74, 0.35);
+}
+
+.btn-3d:active {
+    transform: translateY(3px) !important;
+    box-shadow: 0 1px 0 #003d29, 0 2px 8px rgba(0, 110, 74, 0.2) !important;
+}
+
+/* Biến thể nút vàng 3D */
+.btn-3d-gold {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 4px 0 #92400e, 0 6px 16px rgba(217, 119, 6, 0.32);
+}
+
+.btn-3d-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #92400e, 0 10px 24px rgba(217, 119, 6, 0.4);
+}
+
+.btn-3d-gold:active {
+    transform: translateY(3px) !important;
+    box-shadow: 0 1px 0 #92400e, 0 2px 8px rgba(217, 119, 6, 0.2) !important;
+}
+
+/* Biến thể nút phụ 3D (Secondary) */
+.btn-3d-light {
+    background: #ffffff;
+    color: #1e293b !important;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 0 #cbd5e1, 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.btn-3d-light:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #cbd5e1, 0 8px 18px rgba(0, 0, 0, 0.1);
+}
+
+.btn-3d-light:active {
+    transform: translateY(3px) !important;
+    box-shadow: 0 1px 0 #cbd5e1, 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* 5. HUY HIỆU NỔI 3D (3D Pill Badges) */
+.badge-3d {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    transform: translateZ(4px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.badge-3d:hover {
+    transform: translateZ(8px) scale(1.04);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* 6. LỚP PARALLAX FLOATING (Floating Layers) */
+.float-layer {
+    position: absolute;
+    pointer-events: none;
+    will-change: transform;
+    transition: transform 0.25s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+/* 7. MODAL NỔI 3D (Modal 3D Elevation) */
+.modal-3d .modal-content {
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: var(--depth-4), 0 0 40px rgba(0, 0, 0, 0.18);
+    transform: scale(0.94) translateZ(0);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.modal-3d.show .modal-content {
+    transform: scale(1) translateZ(30px);
+}
+
+/* 8. KHẢ NĂNG TRUY CẬP (A11Y & PREFERS-REDUCED-MOTION) */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .tilt, .card-3d, .float-layer, .btn-3d {
+        transform: none !important;
+        transition: none !important;
+    }
+
+    .glare-layer {
+        display: none !important;
+    }
+}

@@ -1,0 +1,148 @@
+@model List<BeautyShop.Models.User>
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Quản lý Nhân viên & Phạm vi Kho";
+}
+
+<div class="page-hdr d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>Quản Lý Nhân Viên &amp; Phạm Vi Kho</h2>
+        <span class="ph-sub text-muted">Tổng số: @(Model?.Count ?? 0) tài khoản nhân sự · Phân quyền theo nhóm chức năng &amp; gán phạm vi dữ liệu kho</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("Matrix", "RoleManagement")" class="btn btn-as">
+            <i class="bi bi-grid-3x3-gap"></i> Ma trận Vai trò &times; Quyền
+        </a>
+        <a href="@Url.Action("Create", "Employees")" class="btn btn-ap">
+            <i class="bi bi-plus-lg"></i> Thêm nhân viên
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-ok mb-3">
+        <i class="bi bi-check-circle me-1"></i> @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-err mb-3">
+        <i class="bi bi-exclamation-triangle me-1"></i> @TempData["ErrorMessage"]
+    </div>
+}
+
+<div class="admin-card mb-4">
+    <div class="admin-card-header d-flex justify-content-between align-items-center">
+        <form method="get" action="@Url.Action("Index", "Employees")" class="d-flex gap-2 flex-wrap">
+            <input type="text" name="keyword" value="@ViewBag.Keyword" class="form-control" style="min-width: 240px;" placeholder="Tìm họ tên, email, SĐT..." />
+            <select name="roleFilter" class="form-select" style="width: 200px;">
+                <option value="">-- Tất cả vai trò --</option>
+                @if (ViewBag.Roles != null)
+                {
+                    foreach (var r in ViewBag.Roles)
+                    {
+                        <option value="@r.Name" selected="@(ViewBag.RoleFilter == r.Name ? "selected" : null)">@(r.DisplayName ?? r.Name) (@r.Name)</option>
+                    }
+                }
+            </select>
+            <button type="submit" class="btn btn-ap sm">Lọc</button>
+        </form>
+    </div>
+    <div class="admin-card-body p-0">
+        @if (Model != null && Model.Count > 0)
+        {
+            <div class="table-responsive">
+                <table class="admin-table table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Họ tên</th>
+                            <th>Email</th>
+                            <th>Vai trò chức năng (Role)</th>
+                            <th>Phạm vi dữ liệu kho (UserWarehouseScope)</th>
+                            <th>Trạng thái</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Select((value, i) => new { i, value }))
+                        {
+                            var roleName = item.value.Role?.Name ?? "N/A";
+                            <tr>
+                                <td>@(item.i + 1)</td>
+                                <td>
+                                    <div class="fw-bold">@item.value.FullName</div>
+                                    <div class="small text-muted">@(item.value.PhoneNumber ?? "Chưa cập nhật SĐT")</div>
+                                </td>
+                                <td><code>@item.value.Email</code></td>
+                                <td>
+                                    <span class="bdg @(roleName == "Admin" ? "bdg-purple" : roleName == "Warehouse" ? "bdg-blue" : roleName == "Cashier" ? "bdg-green" : "bdg-orange")">
+                                        @BeautyShop.Models.AppRoles.GetDisplayName(roleName) (@roleName)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (roleName == "Admin")
+                                    {
+                                        <span class="bdg bdg-purple">Toàn hệ thống (Bỏ qua bộ lọc)</span>
+                                    }
+                                    else if (item.value.WarehouseScopes != null && item.value.WarehouseScopes.Any())
+                                    {
+                                        foreach (var ws in item.value.WarehouseScopes)
+                                        {
+                                            <span class="badge bg-light text-dark border me-1 mb-1">
+                                                <i class="bi bi-building me-1 text-success"></i>@(ws.Store?.Name ?? $"Kho #{ws.StoreId}")
+                                            </span>
+                                        }
+                                    }
+                                    else if (roleName == "Shipper")
+                                    {
+                                        <span class="text-muted small">Theo chuyến giao được phân công</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger small">Chưa gán kho</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.value.IsActive)
+                                    {
+                                        <span class="bdg bdg-green">Hoạt động</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="bdg bdg-red">Đã khóa</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <a href="@Url.Action("Edit", "Employees", new { id = item.value.Id })" class="btn btn-ae sm" title="Chỉnh sửa vai trò & phạm vi kho">
+                                        <i class="bi bi-pencil"></i> Sửa / Gán kho
+                                    </a>
+                                    <a href="@Url.Action("Detail", "Employees", new { id = item.value.Id })" class="btn btn-as sm" title="Chi tiết">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <form method="post" action="@Url.Action("ToggleStatus", "Employees", new { id = item.value.Id })" class="d-inline">
+                                        @if (item.value.IsActive)
+                                        {
+                                            <button type="submit" class="btn btn-aw sm" title="Khóa">Khóa</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="btn btn-ap sm" title="Mở khóa">Mở khóa</button>
+                                        }
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="p-4 text-center text-muted">
+                <p class="mb-0">Không có nhân viên nào.</p>
+            </div>
+        }
+    </div>
+</div>

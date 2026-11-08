@@ -1,0 +1,352 @@
+@model BeautyShop.Models.Consultation
+@{
+    ViewData["Title"] = $"Chi tiết lịch tư vấn #CS-{Model.Id:D4}";
+
+    string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Chờ xác nhận" => "bg-warning text-dark",
+            "Đã xác nhận" => "bg-info text-dark",
+            "Đã phân công" => "bg-primary text-white",
+            "Đang tư vấn" => "bg-primary text-white",
+            "Đã hoàn thành" => "bg-success text-white",
+            "Đã hủy" => "bg-secondary text-white",
+            _ => "bg-light text-dark"
+        };
+    }
+}
+
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb bg-white p-3 rounded-4 shadow-sm">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none text-success fw-bold"><i class="bi bi-house-door me-1"></i>Trang chủ</a></li>
+            <li class="breadcrumb-item"><a asp-action="MyConsultations" class="text-decoration-none text-success fw-bold">Lịch tư vấn của tôi</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Chi tiết #CS-@Model.Id.ToString("D4")</li>
+        </ol>
+    </nav>
+
+    <!-- Alerts -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="bi bi-check-circle-fill fs-5"></i>
+            <div>@TempData["SuccessMessage"]</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="bi bi-exclamation-circle-fill fs-5"></i>
+            <div>@TempData["ErrorMessage"]</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- Cột trái: Thông tin lịch hẹn -->
+        <div class="col-lg-8">
+            <!-- Thẻ thông tin lịch -->
+            <div class="card border-0 rounded-4 shadow-sm overflow-hidden mb-4">
+                <div class="card-header bg-white border-bottom p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h4 class="fw-bold text-dark mb-0">Lịch tư vấn #CS-@Model.Id.ToString("D4")</h4>
+                            <span class="badge @GetStatusBadgeClass(Model.Status) px-3 py-2 rounded-pill fs-6">
+                                @Model.Status
+                            </span>
+                        </div>
+                        <small class="text-muted"><i class="bi bi-clock me-1"></i>Đăng ký ngày: @Model.CreatedAt.ToString("HH:mm dd/MM/yyyy")</small>
+                    </div>
+
+                    @if (Model.Status == "Chờ xác nhận" || Model.Status == "Đã xác nhận" || Model.Status == "Đã phân công")
+                    {
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                            <i class="bi bi-x-circle me-1"></i>Hủy lịch hẹn
+                        </button>
+                    }
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="row g-4 mb-4">
+                        <div class="col-sm-6">
+                            <div class="p-3 bg-light rounded-3 h-100">
+                                <div class="text-muted small fw-bold text-uppercase mb-1">Dịch vụ tư vấn</div>
+                                <div class="fw-bold text-dark fs-5 text-success">
+                                    <i class="bi bi-tag-fill me-2"></i>@Model.ConsultationType
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="p-3 bg-light rounded-3 h-100">
+                                <div class="text-muted small fw-bold text-uppercase mb-1">Thời gian buổi tư vấn</div>
+                                <div class="fw-bold text-dark fs-5">
+                                    <i class="bi bi-calendar-check me-2 text-success"></i>@Model.AppointmentDate.ToString("dd/MM/yyyy")
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    <i class="bi bi-clock me-1"></i>@Model.StartTime.ToString(@"hh\:mm") - @Model.EndTime.ToString(@"hh\:mm")
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ghi chú / Yêu cầu từ khách hàng -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-chat-left-quote-fill text-success me-2"></i>Nội dung / Tình trạng da bạn đã gửi:</h6>
+                        <div class="p-3 rounded-3 bg-light border text-dark" style="white-space: pre-line;">
+                            @(string.IsNullOrWhiteSpace(Model.CustomerNote) ? "Không có ghi chú cụ thể." : Model.CustomerNote)
+                        </div>
+                    </div>
+
+                    <!-- KẾT QUẢ TƯ VẤN TỪ CHUYÊN VIÊN -->
+                    @if (!string.IsNullOrWhiteSpace(Model.ConsultationResult))
+                    {
+                        <div class="mb-4 p-4 rounded-4 border-2 border-success bg-success bg-opacity-10 border">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-award-fill text-success fs-4"></i>
+                                <h5 class="fw-bold text-success mb-0">Kết quả tư vấn & Chu trình chăm sóc khuyến nghị</h5>
+                            </div>
+                            <div class="p-3 bg-white rounded-3 border text-dark fs-6" style="white-space: pre-line; line-height: 1.6;">
+                                @Model.ConsultationResult
+                            </div>
+                        </div>
+                    }
+
+                    <!-- SẢN PHẨM ĐƯỢC CHUYÊN VIÊN ĐỀ XUẤT -->
+                    @if (Model.ConsultationProducts != null && Model.ConsultationProducts.Any())
+                    {
+                        <div class="mb-4">
+                            <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                                <i class="bi bi-bag-check-fill text-success"></i> Sản phẩm được đề xuất cho bạn (@Model.ConsultationProducts.Count)
+                            </h5>
+                            <div class="row g-3">
+                                @foreach (var cp in Model.ConsultationProducts)
+                                {
+                                    <div class="col-md-6">
+                                        <div class="card h-100 border rounded-3 p-3 shadow-none bg-light">
+                                            <div class="d-flex gap-3 align-items-start">
+                                                <img src="@(string.IsNullOrEmpty(cp.Product?.ThumbnailUrl) ? "/images/no-image.png" : cp.Product.ThumbnailUrl)"
+                                                     alt="@cp.Product?.Name"
+                                                     class="rounded-3 border"
+                                                     style="width: 70px; height: 70px; object-fit: cover;" />
+                                                <div class="flex-grow-1">
+                                                    <div class="fw-bold text-dark line-clamp-2" style="font-size: 0.95rem;">
+                                                        @cp.Product?.Name
+                                                    </div>
+                                                    @if (cp.Product?.ProductVariants != null && cp.Product.ProductVariants.Any())
+                                                    {
+                                                        <div class="text-danger fw-bold mt-1">
+                                                            @(cp.Product.ProductVariants.First().RetailPrice?.ToString("N0") ?? "Chưa thiết lập") đ
+                                                        </div>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(cp.Note))
+                                                    {
+                                                        <div class="small text-muted mt-2 p-2 bg-white rounded-2 border">
+                                                            <strong><i class="bi bi-info-circle me-1 text-primary"></i>Hướng dẫn dùng:</strong> @cp.Note
+                                                        </div>
+                                                    }
+                                                    <div class="mt-2">
+                                                        <a asp-controller="Product" asp-action="Detail" asp-route-id="@cp.ProductId" class="btn btn-sm btn-outline-success rounded-pill px-3" target="_blank">
+                                                            <i class="bi bi-box-arrow-up-right me-1"></i>Xem sản phẩm
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- PHẦN ĐÁNH GIÁ BUỔI TƯ VẤN -->
+            <div class="card border-0 rounded-4 shadow-sm overflow-hidden">
+                <div class="card-header bg-white border-bottom p-4">
+                    <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-star-fill text-warning"></i> Đánh giá buổi tư vấn
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    @if (Model.Review != null)
+                    {
+                        <!-- Đã đánh giá -->
+                        <div class="p-3 bg-light rounded-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div class="text-warning fs-5">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        if (i <= Model.Review.Rating)
+                                        {
+                                            <i class="bi bi-star-fill"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-star"></i>
+                                        }
+                                    }
+                                    <span class="text-dark fw-bold ms-2 fs-6">(@Model.Review.Rating/5 sao)</span>
+                                </div>
+                                <small class="text-muted">Đánh giá ngày: @Model.Review.CreatedAt.ToString("dd/MM/yyyy")</small>
+                            </div>
+                            <div class="text-dark fst-italic">
+                                "@Model.Review.Comment"
+                            </div>
+                        </div>
+                    }
+                    else if (Model.Status == "Đã hoàn thành")
+                    {
+                        <!-- Chưa đánh giá & đã hoàn thành: Form đánh giá -->
+                        <p class="text-muted mb-4">Buổi tư vấn của bạn đã hoàn thành. Hãy để lại nhận xét và số sao để giúp chuyên viên hoàn thiện chất lượng dịch vụ nhé!</p>
+                        <form asp-action="Review" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="ConsultationId" value="@Model.Id" />
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark">Mức độ hài lòng: <span class="text-danger">*</span></label>
+                                <div class="rating-stars d-flex gap-2 fs-3 text-warning cursor-pointer" id="rating-container">
+                                    <i class="bi bi-star-fill star-item" data-value="1"></i>
+                                    <i class="bi bi-star-fill star-item" data-value="2"></i>
+                                    <i class="bi bi-star-fill star-item" data-value="3"></i>
+                                    <i class="bi bi-star-fill star-item" data-value="4"></i>
+                                    <i class="bi bi-star-fill star-item" data-value="5"></i>
+                                </div>
+                                <input type="hidden" name="Rating" id="rating-input" value="5" />
+                                <small class="text-muted mt-1 d-block" id="rating-text">Tuyệt vời (5/5 sao)</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark">Nhận xét về buổi tư vấn:</label>
+                                <textarea name="Comment" class="form-control rounded-3 border-2" rows="3" placeholder="Chuyên viên nhiệt tình, giải đáp tận tình về các vấn đề da của mình..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-warning px-4 py-2 rounded-3 fw-bold text-dark">
+                                <i class="bi bi-send me-1"></i>Gửi đánh giá
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <!-- Chưa hoàn thành -->
+                        <div class="text-muted fst-italic py-2">
+                            <i class="bi bi-info-circle me-1"></i>Bạn có thể đánh giá sau khi buổi tư vấn chuyển sang trạng thái <strong>"Đã hoàn thành"</strong>.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Cột phải: Thông tin nhân viên & Hỗ trợ -->
+        <div class="col-lg-4">
+            <!-- Thẻ chuyên viên phụ trách -->
+            <div class="card border-0 rounded-4 shadow-sm overflow-hidden mb-4">
+                <div class="card-header bg-white border-bottom p-3">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-person-badge text-success me-2"></i>Chuyên viên phụ trách</h6>
+                </div>
+                <div class="card-body p-4 text-center">
+                    @if (Model.Employee != null)
+                    {
+                        <div class="rounded-circle bg-success text-white mx-auto d-flex align-items-center justify-content-center fw-bold mb-3" style="width: 70px; height: 70px; font-size: 1.8rem; box-shadow: 0 4px 14px rgba(0,110,74,0.3);">
+                            @(Model.Employee.FullName.Substring(0, 1))
+                        </div>
+                        <h5 class="fw-bold text-dark mb-1">@Model.Employee.FullName</h5>
+                        <div class="badge bg-light text-success border px-3 py-1 rounded-pill mb-3">Chuyên viên tư vấn BeautyShop</div>
+                        <div class="text-muted small mb-2"><i class="bi bi-envelope me-1"></i>@Model.Employee.Email</div>
+                        @if (!string.IsNullOrEmpty(Model.Employee.PhoneNumber))
+                        {
+                            <div class="text-muted small"><i class="bi bi-telephone me-1"></i>@Model.Employee.PhoneNumber</div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-light text-muted mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px; font-size: 1.8rem;">
+                            <i class="bi bi-hourglass-split text-warning"></i>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1">Đang chờ phân công</h6>
+                        <p class="text-muted small mb-0">Ban quản trị BeautyShop đang chọn chuyên viên phù hợp nhất với nhu cầu của bạn.</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Thẻ hỗ trợ & quy định -->
+            <div class="card border-0 rounded-4 shadow-sm overflow-hidden">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-question-circle text-success me-2"></i>Lưu ý về buổi tư vấn</h6>
+                    <ul class="list-unstyled text-muted small mb-0 d-flex flex-column gap-2">
+                        <li><i class="bi bi-check2 text-success me-1"></i> Buổi tư vấn diễn ra trực tiếp hoặc online theo thỏa thuận.</li>
+                        <li><i class="bi bi-check2 text-success me-1"></i> Vui lòng chuẩn bị sẵn các câu hỏi hoặc hình ảnh tình trạng da nếu có.</li>
+                        <li><i class="bi bi-check2 text-success me-1"></i> Bạn có thể hủy lịch trước khi buổi tư vấn bắt đầu nếu bận đột xuất.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Hủy Lịch -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0">
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="bi bi-exclamation-octagon-fill me-2"></i>Hủy lịch hẹn tư vấn
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="mb-3">Bạn có chắc chắn muốn hủy lịch hẹn <strong>#CS-@Model.Id.ToString("D4")</strong> không?</p>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-dark">Lý do hủy:</label>
+                        <input type="text" name="reason" class="form-control rounded-3" placeholder="Nhập lý do hủy lịch..." />
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-danger rounded-3 px-4 fw-bold">Xác nhận hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const stars = document.querySelectorAll(".star-item");
+        const ratingInput = document.getElementById("rating-input");
+        const ratingText = document.getElementById("rating-text");
+        const textMap = {
+            1: "Rất không hài lòng (1/5 sao)",
+            2: "Chưa hài lòng (2/5 sao)",
+            3: "Bình thường (3/5 sao)",
+            4: "Hài lòng (4/5 sao)",
+            5: "Tuyệt vời (5/5 sao)"
+        };
+
+        if (stars.length > 0) {
+            stars.forEach(star => {
+                star.addEventListener("click", function () {
+                    const val = parseInt(this.getAttribute("data-value"));
+                    ratingInput.value = val;
+                    ratingText.textContent = textMap[val] || (val + "/5 sao");
+
+                    stars.forEach(s => {
+                        const sVal = parseInt(s.getAttribute("data-value"));
+                        if (sVal <= val) {
+                            s.classList.remove("bi-star");
+                            s.classList.add("bi-star-fill");
+                        } else {
+                            s.classList.remove("bi-star-fill");
+                            s.classList.add("bi-star");
+                        }
+                    });
+                });
+            });
+        }
+    });
+</script>

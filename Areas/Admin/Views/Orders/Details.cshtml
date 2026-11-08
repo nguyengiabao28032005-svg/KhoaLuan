@@ -1,0 +1,413 @@
+@model BeautyShop.Models.Order
+
+@{
+    ViewData["Title"] = "Chi tiết đơn hàng " + Model.OrderCode;
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var details = (ViewBag.OrderDetails as IEnumerable<BeautyShop.Models.OrderDetail>) ?? Model.OrderDetails;
+    var tripStop = ViewBag.TripStop as BeautyShop.Models.DeliveryTripStop;
+    var deliveryTrip = ViewBag.DeliveryTrip as BeautyShop.Models.DeliveryTrip;
+    var assignedShipper = ViewBag.AssignedShipper as BeautyShop.Models.User;
+    var designatedShipper = ViewBag.DesignatedShipper as BeautyShop.Models.User;
+    var ghnDetail = ViewBag.GhnDetail as BeautyShop.Services.GhnOrderDetailResult;
+    bool isGhnSandbox = (ViewBag.IsGhnSandbox as bool?) ?? true;
+    bool isCompleted = Model.OrderStatus == "Completed";
+    bool isCancelled = Model.OrderStatus is "Cancelled" or "Hủy bỏ đơn" or "Đã hủy";
+    bool isGhnOrder = !string.IsNullOrEmpty(Model.GhnOrderCode);
+}
+
+<div class="container-fluid px-4 py-4" style="max-width: 1100px;">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+            <div>@TempData["SuccessMessage"]</div>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-5 text-danger"></i>
+            <div>@TempData["ErrorMessage"]</div>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="mb-4">
+        <a asp-action="Index" class="text-decoration-none small text-secondary fw-semibold"><i class="bi bi-arrow-left me-1"></i>Trở lại danh sách</a>
+        <h3 class="fw-bold text-dark mt-2">Chi Tiết Đơn Hàng: <span class="text-primary">@Model.OrderCode</span></h3>
+        <span class="text-muted small">Thời gian đặt: @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</span>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-person-lines-fill me-2 text-success"></i>Thông tin người nhận hàng</h6>
+                </div>
+                <div class="card-body pt-0 row g-3 small">
+                    <div class="col-sm-6">
+                        <p class="mb-1 text-muted">Họ tên người nhận:</p>
+                        <h6 class="fw-bold text-dark">@Model.CustomerName</h6>
+                    </div>
+                    <div class="col-sm-6">
+                        <p class="mb-1 text-muted">Số điện thoại liên hệ:</p>
+                        <h6 class="fw-bold text-dark">@Model.PhoneNumber</h6>
+                    </div>
+                    <div class="col-12">
+                        <p class="mb-1 text-muted">Địa chỉ bàn giao chi tiết:</p>
+                        <h6 class="fw-bold text-dark mb-0">@Model.ShippingAddress</h6>
+                    </div>
+                    <div class="col-12 mt-2 pt-2 border-top">
+                        <p class="mb-1 text-muted">Phương thức vận chuyển & Điều phối:</p>
+                        @if (!string.IsNullOrEmpty(Model.GhnOrderCode))
+                        {
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1.5 rounded-pill fw-bold">
+                                    <i class="bi bi-truck me-1"></i> Vận chuyển liên tỉnh (GHN)
+                                </span>
+                                <span class="text-dark fw-bold">Mã vận đơn GHN: <code class="text-primary fs-6">@Model.GhnOrderCode</code></span>
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(Model.DeliveryShift) || Model.DeliveryZoneId != null || (Model.ShippingAddress != null && (Model.ShippingAddress.Contains("Hồ Chí Minh") || Model.ShippingAddress.Contains("TP.HCM"))))
+                        {
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 rounded-pill fw-bold">
+                                    <i class="bi bi-shield-check me-1"></i> Giao hàng nội bộ TP.HCM
+                                </span>
+                                <span class="text-dark small">
+                                    <strong>Ca giao:</strong> @(Model.DeliveryShift ?? "Chưa gán ca") | 
+                                    <strong>Ngày giao:</strong> @(Model.ExpectedDeliveryDate?.ToString("dd/MM/yyyy") ?? "Hôm nay") | 
+                                    <strong>Khu vực:</strong> @(Model.DeliveryZone?.ZoneName ?? "Nội thành TP.HCM")
+                                </span>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary px-2.5 py-1 rounded-pill">Tiêu chuẩn</span>
+                        }
+                    </div>
+                    <div class="col-12 mt-2 pt-2 border-top">
+                        <p class="mb-1 text-muted">Nhân viên giao hàng (Shipper phụ trách):</p>
+                        @if (isGhnOrder)
+                        {
+                            <div class="p-3 rounded-3 border bg-light">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 42px; height: 42px;">
+                                        <i class="bi bi-truck fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-1.5 flex-wrap">
+                                            <span>Đối tác vận chuyển: Giao Hàng Nhanh (GHN)</span>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">3PL Logistics</span>
+                                        </div>
+                                        <div class="text-muted small mt-1">
+                                            <span>Mã vận đơn:</span>
+                                            <code class="text-primary fw-bold fs-6">@Model.GhnOrderCode</code>
+                                            <span class="mx-2">•</span>
+                                            @if (ghnDetail != null)
+                                            {
+                                                <span class="badge bg-success-subtle text-success fw-bold"><i class="bi bi-check-circle me-1"></i>@ghnDetail.StatusText</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-secondary"><i class="bi bi-box-seam me-1"></i>Bưu tá GHN lấy hàng &amp; giao tận nơi</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                @if (ghnDetail != null)
+                                {
+                                    <div class="mt-2.5 pt-2 border-top small d-flex flex-wrap gap-3 text-secondary">
+                                        <div><strong>Dự kiến phát hàng:</strong> <span class="text-dark fw-semibold">@(ghnDetail.LeadTime?.ToString("dd/MM/yyyy HH:mm") ?? "Đang cập nhật")</span></div>
+                                        <div><strong>Tiền thu hộ COD:</strong> <span class="text-danger fw-bold">@ghnDetail.CodAmount.ToString("N0") đ</span></div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (assignedShipper != null)
+                        {
+                            <div class="p-2.5 rounded-3 border bg-light d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px; font-size: 1.1rem;">
+                                        <i class="bi bi-person-walking"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark fs-6">
+                                            @assignedShipper.FullName 
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1 small">Shipper chính thức</span>
+                                        </div>
+                                        <div class="text-muted small mt-0.5">
+                                            <a href="tel:@assignedShipper.PhoneNumber" class="text-decoration-none text-success fw-semibold">
+                                                <i class="bi bi-telephone-fill me-1"></i>@assignedShipper.PhoneNumber
+                                            </a>
+                                            <span class="mx-2">•</span>
+                                            <i class="bi bi-envelope me-1"></i>@assignedShipper.Email
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    @if (deliveryTrip != null)
+                                    {
+                                        <a asp-area="Admin" asp-controller="Delivery" asp-action="Detail" asp-route-id="@deliveryTrip.Id" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none px-2.5 py-1.5 fw-bold" title="Xem chi tiết chuyến xe">
+                                            <i class="bi bi-truck-flatbed me-1"></i> @deliveryTrip.TripCode
+                                        </a>
+                                    }
+                                    @if (tripStop != null)
+                                    {
+                                        <div class="mt-1">
+                                            @if (tripStop.StopStatus == "Delivered" || tripStop.StopStatus == "Success")
+                                            {
+                                                <span class="badge bg-success-subtle text-success fw-bold"><i class="bi bi-check2-circle me-1"></i> Đã giao thành công</span>
+                                            }
+                                            else if (tripStop.StopStatus == "Failed")
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger fw-bold"><i class="bi bi-x-circle me-1"></i> Giao thất bại</span>
+                                                @if (!string.IsNullOrEmpty(tripStop.FailureReason))
+                                                {
+                                                    <div class="small text-danger fw-medium mt-0.5">Lý do: @tripStop.FailureReason</div>
+                                                }
+                                            }
+                                            else if (tripStop.StopStatus == "InTransit")
+                                            {
+                                                <span class="badge bg-warning-subtle text-warning fw-bold"><i class="bi bi-arrow-repeat me-1"></i> Đang đi giao</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary-subtle text-secondary fw-bold"><i class="bi bi-clock me-1"></i> Đã gán vào chuyến xe</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else if (designatedShipper != null)
+                        {
+                            <div class="p-2.5 rounded-3 border bg-light d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
+                                        <i class="bi bi-person"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark">
+                                            @designatedShipper.FullName 
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle ms-1 small">Shipper phụ trách cụm @(Model.DeliveryZone?.ClusterName ?? Model.DeliveryZone?.ZoneName)</span>
+                                        </div>
+                                        <div class="text-muted small mt-0.5">
+                                            <a href="tel:@designatedShipper.PhoneNumber" class="text-decoration-none text-success fw-semibold">
+                                                <i class="bi bi-telephone-fill me-1"></i>@designatedShipper.PhoneNumber
+                                            </a>
+                                            <span class="mx-2">•</span>
+                                            <i class="bi bi-envelope me-1"></i>@designatedShipper.Email
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2.5 py-1.5 fw-bold">
+                                        <i class="bi bi-hourglass-split me-1"></i> Chưa xếp vào chuyến giao
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="p-2.5 rounded-3 border bg-light d-flex align-items-center gap-2 text-muted">
+                                <i class="bi bi-person-x fs-5"></i>
+                                <span>Chưa phân công shipper cho đơn hàng này</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-box-seam me-2 text-primary"></i>Danh sách mỹ phẩm đặt mua</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 small">
+                            <thead class="table-light text-secondary">
+                                <tr>
+                                    <th class="ps-3">Sản phẩm mua</th>
+                                    <th class="text-center">Số lượng</th>
+                                    <th class="text-end">Đơn giá</th>
+                                    <th class="text-end pe-3">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (details != null && details.Any())
+                                {
+                                    foreach (var item in details)
+                                    {
+                                        <tr>
+                                            <td class="ps-3">
+                                                <div class="fw-bold text-dark">@(item.Variant?.Product?.Name ?? "Sản phẩm")</div>
+                                                <small class="text-muted">Phân loại: @(item.Variant?.Volume ?? "Mặc định")</small>
+                                            </td>
+                                            <td class="text-center fw-semibold">@item.Quantity</td>
+                                            <td class="text-end text-secondary">@item.UnitPrice.ToString("N0") đ</td>
+                                            <td class="text-end fw-bold text-dark pe-3">@((item.Quantity * item.UnitPrice).ToString("N0")) đ</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-3 bg-light border-top text-end rounded-bottom-3 small">
+                        <p class="mb-1">Tiền hàng thô: <span class="fw-bold text-dark">@Model.TotalAmount.ToString("N0") đ</span></p>
+                        <p class="mb-1">Phí vận chuyển: <span class="fw-bold text-dark">@Model.DeliveryFee.ToString("N0") đ</span></p>
+                        <h5 class="fw-bold text-danger mt-2 mb-0">Tổng cộng thanh toán: @Model.FinalAmount.ToString("N0") đ</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-gear-wide-connected me-2 text-warning"></i>Xử lý & Cập nhật đơn</h6>
+                </div>
+                <div class="card-body pt-0">
+                    <form asp-action="UpdateStatus" asp-controller="Orders" asp-area="Admin" method="post" id="updateStatusForm">
+                        <input type="hidden" name="orderId" value="@Model.Id" />
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary">Hình thức thanh toán:</label>
+                            <input type="text" class="form-control form-control-sm bg-light fw-medium text-dark" value="@(Model.PaymentMethod == "ChuyenKhoan" ? "Chuyển khoản qua VietQR" : "Thanh toán tiền mặt COD")" readonly />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary">Trạng thái thanh toán hiện tại:</label>
+                            <select name="paymentStatus" class="form-select form-select-sm fw-medium">
+                                <option value="Unpaid" selected="@(Model.PaymentStatus == "Unpaid")">Unpaid (Chưa thanh toán)</option>
+                                <option value="Awaiting Payment" selected="@(Model.PaymentStatus == "Awaiting Payment")">Awaiting Payment (Chờ thanh toán QR)</option>
+                                <option value="Paid" selected="@(Model.PaymentStatus == "Paid")">Paid (Đã nhận tiền)</option>
+                            </select>
+                        </div>
+
+                        <hr class="my-3 text-muted" />
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-semibold text-secondary">Trạng thái xử lý vận đơn:</label>
+                            <select name="orderStatus" class="form-select form-select-sm fw-bold text-primary">
+                                <option value="Pending" selected="@(Model.OrderStatus == "Pending")">Pending (Chờ duyệt)</option>
+                                <option value="Confirmed" selected="@(Model.OrderStatus == "Confirmed")">Confirmed (Đã xác nhận)</option>
+                                <option value="Shipping" selected="@(Model.OrderStatus == "Shipping")">Shipping (Đang giao hàng)</option>
+                                <option value="Completed" selected="@(Model.OrderStatus == "Completed")">Completed (Giao thành công)</option>
+                                <option value="Cancelled" selected="@(Model.OrderStatus == "Cancelled")">Cancelled (Hủy bỏ đơn)</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" id="btnUpdateStatus" class="btn btn-primary btn-sm w-100 py-2 fw-semibold rounded-3 shadow-sm">
+                            <i class="bi bi-cloud-arrow-up me-1"></i> Lưu cập nhật
+                        </button>
+                    </form>
+
+                    <hr class="my-3 text-muted" />
+                    <div class="d-flex flex-column gap-2">
+                        @if (isCompleted)
+                        {
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100 py-2 fw-semibold rounded-3 shadow-sm text-muted bg-light" disabled title="Đơn hàng đã hoàn thành, không thể lập chuyến giao">
+                                <i class="bi bi-lock-fill me-1 text-secondary"></i> Lập chuyến giao cho đơn này
+                            </button>
+                            <small class="text-success text-center fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Đơn hàng đã hoàn thành</small>
+                        }
+                        else if (isCancelled)
+                        {
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100 py-2 fw-semibold rounded-3 shadow-sm text-muted bg-light" disabled title="Đơn hàng đã bị hủy, không thể lập chuyến giao">
+                                <i class="bi bi-slash-circle me-1 text-danger"></i> Lập chuyến giao cho đơn này
+                            </button>
+                            <small class="text-danger text-center fw-semibold"><i class="bi bi-x-circle-fill me-1"></i>Đơn hàng đã bị hủy</small>
+                        }
+                        else if (isGhnOrder)
+                        {
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100 py-2 fw-semibold rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#ghnTrackingModal" title="Xem trạng thái đơn hàng trên hệ thống GHN">
+                                <i class="bi bi-search me-1"></i> Tra cứu hành trình GHN
+                            </button>
+                            <small class="text-primary text-center fw-semibold"><i class="bi bi-truck me-1"></i>Đơn liên tỉnh - GHN đảm nhiệm vận chuyển</small>
+                        }
+                        else
+                        {
+                            <a href="/Admin/Delivery/Planner?date=@(Model.ExpectedDeliveryDate?.ToString("yyyy-MM-dd") ?? DateTime.Today.ToString("yyyy-MM-dd"))&shift=@(Model.DeliveryShift ?? "Morning")" class="btn btn-outline-primary btn-sm w-100 py-2 fw-semibold rounded-3 shadow-sm" title="Chuyển đến trang lập chuyến giao hàng tối ưu cho đơn này">
+                                <i class="bi bi-calendar2-range me-1"></i> Lập chuyến giao cho đơn này
+                            </a>
+                        }
+                        @if (deliveryTrip != null)
+                        {
+                            <a asp-area="Admin" asp-controller="Delivery" asp-action="Detail" asp-route-id="@deliveryTrip.Id" class="btn btn-light border text-primary btn-sm w-100 py-2 fw-semibold rounded-3 shadow-sm" title="Xem chi tiết chuyến giao của đơn hàng">
+                                <i class="bi bi-truck-flatbed me-1"></i> Xem chi tiết chuyến @deliveryTrip.TripCode
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isGhnOrder)
+{
+    <!-- MODAL TRA CỨU BƯU GỬI GHN -->
+    <div class="modal fade" id="ghnTrackingModal" tabindex="-1" aria-labelledby="ghnTrackingModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light py-3 border-bottom">
+                    <h6 class="modal-title fw-bold text-dark" id="ghnTrackingModalLabel">
+                        <i class="bi bi-truck text-primary me-2"></i>Tra Cứu Bưu Gửi GHN: <span class="text-primary">@Model.GhnOrderCode</span>
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="list-group list-group-flush border rounded-3 small">
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2.5">
+                            <span class="text-muted">Mã vận đơn GHN:</span>
+                            <span class="fw-bold text-primary fs-6">@Model.GhnOrderCode</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2.5">
+                            <span class="text-muted">Trạng thái bưu kiện:</span>
+                            <span class="badge bg-success-subtle text-success fw-bold">@(ghnDetail?.StatusText ?? "Chờ bưu tá lấy hàng")</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2.5">
+                            <span class="text-muted">Thời gian dự kiến giao:</span>
+                            <span class="fw-semibold text-dark">@(ghnDetail?.LeadTime?.ToString("dd/MM/yyyy HH:mm") ?? "Đang cập nhật")</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2.5">
+                            <span class="text-muted">Người nhận:</span>
+                            <span class="fw-bold text-dark">@(ghnDetail?.ToName ?? Model.CustomerName) - @(ghnDetail?.ToPhone ?? Model.PhoneNumber)</span>
+                        </div>
+                        <div class="list-group-item py-2.5">
+                            <div class="text-muted mb-1">Địa chỉ giao hàng:</div>
+                            <div class="fw-semibold text-dark">@(ghnDetail?.ToAddress ?? Model.ShippingAddress)</div>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2.5">
+                            <span class="text-muted">Thu hộ tiền mặt (COD):</span>
+                            <span class="fw-bold text-danger">@((ghnDetail?.CodAmount ?? Model.FinalAmount).ToString("N0")) đ</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 border-top text-end">
+                    <button type="button" class="btn btn-sm btn-secondary px-3" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var form = document.getElementById("updateStatusForm");
+        var btn = document.getElementById("btnUpdateStatus");
+        if (form && btn) {
+            form.addEventListener("submit", function () {
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Đang lưu cập nhật...';
+                btn.setAttribute("disabled", "disabled");
+                // Cho phép form gửi đi bình thường
+                return true;
+            });
+        }
+    });
+</script>
+}

@@ -1,0 +1,62 @@
+@{
+    ViewData["Title"] = "403 - Từ chối truy cập";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var reqPerm = ViewBag.RequiredPermission as string;
+    var reqPermName = ViewBag.RequiredPermissionName as string;
+    var roleName = ViewBag.CurrentRoleName as string ?? Context.Session.GetString("Role") ?? "Chưa xác định";
+    var returnUrl = ViewBag.ReturnUrl as string;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-danger text-white py-4 text-center">
+                    <div class="display-4 fw-bold mb-1">403</div>
+                    <h4 class="mb-0 fw-semibold">TỪ CHỐI TRUY CẬP (ACCESS DENIED)</h4>
+                </div>
+                <div class="card-body p-4 text-center">
+                    <p class="text-muted mb-4">
+                        Tài khoản của bạn hiện đang thuộc nhóm vai trò <strong>@BeautyShop.Models.AppRoles.GetDisplayName(roleName) (@roleName)</strong>
+                        và không được cấp quyền thực hiện chức năng này.
+                    </p>
+
+                    <div class="alert alert-warning text-start rounded-3 mb-4">
+                        <div class="fw-bold mb-1"><i class="bi bi-shield-lock me-1"></i> Chi tiết quyền bị thiếu:</div>
+                        <div><strong>Mã quyền yêu cầu:</strong> <code class="text-danger fw-bold">@(string.IsNullOrEmpty(reqPerm) ? "permission.required" : reqPerm)</code></div>
+                        <div><strong>Tên chức năng:</strong> @(string.IsNullOrEmpty(reqPermName) ? "Chức năng quản trị chuyên biệt" : reqPermName)</div>
+                        @if (!string.IsNullOrEmpty(returnUrl))
+                        {
+                            <div class="small text-muted mt-1"><strong>Đường dẫn yêu cầu:</strong> <code>@returnUrl</code></div>
+                        }
+                    </div>
+
+                    <p class="small text-secondary mb-4">
+                        Theo nguyên tắc phân quyền theo nhóm chức năng (Bước 6), mỗi vai trò chỉ được phép truy cập các nghiệp vụ đúng với chức năng được giao. Vui lòng liên hệ Quản trị viên (Admin) nếu bạn cần cấp bổ sung quyền này.
+                    </p>
+
+                    <div class="d-flex justify-content-center gap-2 flex-wrap">
+                        @if (roleName == "Warehouse")
+                        {
+                            <a href="/Admin/Inventory" class="btn btn-primary px-4">Về trang Quản lý Kho</a>
+                        }
+                        else if (roleName == "Cashier")
+                        {
+                            <a href="/Admin/Orders" class="btn btn-primary px-4">Về trang Thu ngân / Đơn hàng</a>
+                        }
+                        else if (roleName == "Shipper")
+                        {
+                            <a href="/Admin/Delivery/MyTrips" class="btn btn-primary px-4">Về Chuyến giao của tôi</a>
+                        }
+                        else if (roleName == "Admin")
+                        {
+                            <a href="/Admin/Dashboard" class="btn btn-primary px-4">Về Bảng điều khiển</a>
+                        }
+                        <a href="/" class="btn btn-outline-secondary px-4">Về Trang chủ</a>
+                        <a href="/Account/Logout" class="btn btn-outline-danger px-4">Đăng xuất đổi tài khoản</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

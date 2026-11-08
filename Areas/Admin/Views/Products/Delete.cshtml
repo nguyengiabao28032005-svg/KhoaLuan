@@ -1,0 +1,38 @@
+﻿@model BeautyShop.Models.Product
+
+@{
+    ViewData["Title"] = "Xóa sản phẩm";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid px-4 py-4" style="max-width: 680px;">
+    <div class="card border-0 shadow-sm rounded-3 mt-4 border-top border-5 border-danger">
+        <div class="card-body p-4 text-center">
+            <div class="text-danger mb-3">
+                <i class="bi bi-exclamation-triangle-fill" style="font-size: 3.5rem;"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Xác Nhận Xóa Sản Phẩm?</h4>
+            <p class="text-muted small px-3">Hành động này không thể hoàn tác. Toàn bộ thông tin kèm các biến thể dung tích, giá bán liên quan của sản phẩm này sẽ bị xóa vĩnh viễn khỏi cơ sở dữ liệu.</p>
+
+            <div class="bg-light rounded-3 p-3 my-4 text-start mx-auto" style="max-width: 500px;">
+                <div class="row align-items-center">
+                    <div class="col-3 text-center">
+                        <img src="@(string.IsNullOrEmpty(Model.ThumbnailUrl) ? "/images/no-image.png" : Model.ThumbnailUrl)"
+                             alt="@Model.Name" class="img-thumbnail rounded-2 shadow-sm" style="width: 70px; height: 70px; object-fit: cover;" />
+                    </div>
+                    <div class="col-9">
+                        <h6 class="fw-bold text-dark mb-1 text-truncate">@Model.Name</h6>
+                        <p class="text-muted mb-0 small">Danh mục: @(Model.Category?.Name ?? "N/A")</p>
+                        <p class="text-muted mb-0 small">Thương hiệu: @(Model.Brand?.Name ?? "N/A")</p>
+                    </div>
+                </div>
+            </div>
+
+            <form asp-action="Delete" method="post" class="d-flex justify-content-center gap-3">
+                <input type="hidden" asp-for="Id" />
+                <a asp-action="Index" class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-medium">Không xóa, quay lại</a>
+                <button type="submit" class="btn btn-danger px-5 py-2 rounded-3 fw-semibold shadow-sm">Xác nhận xóa bỏ</button>
+            </form>
+        </div>
+    </div>
+</div>

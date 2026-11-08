@@ -1,0 +1,140 @@
+﻿@{
+    ViewData["Title"] = "Chính sách bảo mật thông tin";
+}
+
+@section Styles {
+    <style>
+        .privacy-header {
+            background: linear-gradient(135deg, var(--hasaki-green), var(--hasaki-green-light));
+            color: white;
+            padding: 50px 20px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .privacy-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        .privacy-card {
+            background: var(--bg-white);
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--shadow-sm);
+            padding: 40px;
+        }
+
+        .privacy-section-title {
+            color: var(--hasaki-green);
+            font-weight: 700;
+            font-size: 1.3rem;
+            margin-top: 35px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+            .privacy-section-title i {
+                font-size: 1.5rem;
+                color: var(--accent-orange);
+            }
+
+        .privacy-content p, .privacy-content ul {
+            color: var(--text-main);
+            line-height: 1.8;
+            font-size: 1rem;
+            text-align: justify;
+        }
+
+        .privacy-content ul {
+            padding-left: 20px;
+        }
+
+        .privacy-content li {
+            margin-bottom: 8px;
+        }
+
+        /* Ẩn margin top cho thẻ h4 đầu tiên */
+        .privacy-card h4:first-child {
+            margin-top: 0;
+        }
+    </style>
+}
+
+<div class="container py-4 min-vh-100">
+
+    <div class="privacy-header">
+        <h1 class="privacy-title"><i class="bi bi-shield-check me-2"></i>Chính Sách Bảo Mật</h1>
+        <p class="mb-0 fs-5 opacity-75">Cam kết bảo vệ quyền riêng tư và thông tin cá nhân của bạn</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="privacy-card privacy-content">
+
+                <p class="fw-medium text-secondary mb-4">
+                    Cám ơn quý khách đã truy cập vào website <strong>BeautyShop</strong>. Chúng tôi tôn trọng và cam kết sẽ bảo mật những thông tin mang tính riêng tư của bạn. Xin vui lòng đọc bản Chính sách bảo mật dưới đây để hiểu hơn những cam kết mà chúng tôi thực hiện nhằm tôn trọng và bảo vệ quyền lợi của người truy cập.
+                </p>
+
+                <h4 class="privacy-section-title">
+                    <i class="bi bi-clipboard-data"></i> 1. Mục đích thu thập thông tin
+                </h4>
+                <p>
+                    Để sử dụng được các dịch vụ của BeautyShop (như đặt hàng, tích điểm, nhận khuyến mãi...), Quý khách hàng phải đăng ký tài khoản và cung cấp một số thông tin như: Email, Họ tên, Số điện thoại, Địa chỉ nhận hàng và một số thông tin khác.
+                </p>
+                <p>
+                    Thông tin này được thu thập nhằm mục đích:
+                </p>
+                <ul>
+                    <li>Hỗ trợ khách hàng khi mua sản phẩm mỹ phẩm tại hệ thống.</li>
+                    <li>Giải đáp thắc mắc khách hàng nhanh chóng.</li>
+                    <li>Cung cấp cho bạn thông tin mới nhất trên Website của chúng tôi.</li>
+                    <li>Thực hiện các bản khảo sát khách hàng nhằm nâng cấp chất lượng giao diện (UI/UX).</li>
+                    <li>Thực hiện các hoạt động quảng bá liên quan đến các sản phẩm làm đẹp.</li>
+                </ul>
+
+                <h4 class="privacy-section-title">
+                    <i class="bi bi-arrow-repeat"></i> 2. Phạm vi sử dụng thông tin
+                </h4>
+                <p>
+                    BeautyShop thu thập và sử dụng thông tin cá nhân của quý khách với mục đích phù hợp và hoàn toàn tuân thủ nội dung của "Chính sách bảo mật" này. Cụ thể, thông tin sẽ được sử dụng trong các trường hợp:
+                </p>
+                <ul>
+                    <li>Giao hàng theo địa chỉ mà quý khách đã cung cấp.</li>
+                    <li>Xử lý đơn đặt hàng và cung cấp dịch vụ thông qua trang web.</li>
+                    <li>Chia sẻ cho đơn vị vận chuyển (chỉ bao gồm tên, số điện thoại và địa chỉ).</li>
+                </ul>
+
+                <h4 class="privacy-section-title">
+                    <i class="bi bi-clock-history"></i> 3. Thời gian lưu trữ thông tin
+                </h4>
+                <p>
+                    Dữ liệu cá nhân của Thành viên sẽ được lưu trữ trong cơ sở dữ liệu hệ thống (Database) cho đến khi có yêu cầu hủy bỏ hoặc tự thành viên đăng nhập và thực hiện hủy bỏ. Còn lại trong mọi trường hợp thông tin cá nhân thành viên sẽ được bảo mật tuyệt đối trên máy chủ của BeautyShop.
+                </p>
+
+                <h4 class="privacy-section-title">
+                    <i class="bi bi-lock"></i> 4. Cam kết bảo mật thông tin cá nhân
+                </h4>
+                <p>
+                    Thông tin cá nhân của khách hàng trên BeautyShop được chúng tôi cam kết bảo mật tuyệt đối theo chính sách bảo vệ thông tin cá nhân. Việc thu thập và sử dụng thông tin của mỗi khách hàng chỉ được thực hiện khi có sự đồng ý của khách hàng đó trừ những trường hợp pháp luật có quy định khác.
+                </p>
+                <p>
+                    Không sử dụng, không chuyển giao, cung cấp hay tiết lộ cho bên thứ 3 nào về thông tin cá nhân của khách hàng khi không có sự cho phép đồng ý từ khách hàng. Mật khẩu của bạn được mã hóa an toàn trước khi lưu trữ vào hệ thống quản trị.
+                </p>
+
+                <hr class="my-5 border-secondary-subtle" />
+
+                <div class="text-center text-muted small">
+                    <p class="mb-1">Cập nhật lần cuối: Tháng 6/2026</p>
+                    <p class="mb-0">Nếu bạn có bất kỳ câu hỏi nào về Chính sách bảo mật này, vui lòng liên hệ hotline: <strong>1800 6324</strong></p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

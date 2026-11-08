@@ -1,0 +1,771 @@
+@{
+    ViewData["Title"] = "Quy trình giao hàng & Phân luồng vận chuyển";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+
+    var internalTrips = ViewBag.InternalTrips as List<BeautyShop.Models.DeliveryTrip> ?? new();
+    var thirdPartyOrders = ViewBag.ThirdPartyOrders as List<BeautyShop.Models.Order> ?? new();
+    var shippers = ViewBag.Shippers as List<BeautyShop.Models.User> ?? new();
+    var selectedDate = (DateTime)ViewBag.SelectedDate;
+    string activeFlow = ViewBag.ActiveFlow as string ?? "internal";
+    string currentUserName = ViewBag.CurrentUserName as string ?? "Nhân viên kho";
+
+    // Thống kê luồng nội bộ
+    int internalTotalTrips = internalTrips.Count;
+    int internalAssigned = internalTrips.Count(t => t.Status == "Assigned" || t.Status == "Draft");
+    int internalInTransit = internalTrips.Count(t => t.Status == "InTransit");
+    int internalAwaitingSettlement = internalTrips.Count(t => t.SettlementStatus == "Unsettled" && t.TotalCodCollected > 0);
+    int internalSettled = internalTrips.Count(t => t.SettlementStatus == "Settled");
+
+    // Thống kê luồng chuyển phát GHN
+    int tpTotal = thirdPartyOrders.Count;
+    int tpPendingHandover = thirdPartyOrders.Count(o => string.IsNullOrEmpty(o.CarrierStaffName) && o.OrderStatus != "Completed" && o.OrderStatus != "Cancelled");
+    int tpDelivering = thirdPartyOrders.Count(o => !string.IsNullOrEmpty(o.CarrierStaffName) && o.OrderStatus != "Completed" && o.OrderStatus != "Cancelled");
+    int tpCompleted = thirdPartyOrders.Count(o => o.OrderStatus == "Completed");
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">🚚 Quy Trình Giao Hàng &amp; Phân Luồng Vận Chuyển</h2>
+        <p class="text-muted mb-0">Hệ thống phân luồng khép kín: Giao nội bộ (TP.HCM) và Giao qua bên thứ ba (Giao Hàng Nhanh / Đi tỉnh)</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <form method="get" asp-action="Process" class="d-flex align-items-center gap-2">
+            <input type="hidden" name="flow" value="@activeFlow" />
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white fw-bold"><i class="bi bi-calendar3 me-1"></i> Ngày:</span>
+                <input type="date" name="date" class="form-control form-control-sm" value="@selectedDate.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary rounded-3 fw-bold px-3">
+                <i class="bi bi-funnel-fill me-1"></i> Xem
+            </button>
+        </form>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- THANH ĐIỀU HƯỚNG TÁCH BIỆT 2 LUỒNG VẬN CHUYỂN -->
+<ul class="nav nav-pills nav-fill bg-white p-2 rounded-4 shadow-sm mb-4 border" id="deliveryFlowTabs">
+    <li class="nav-item">
+        <a class="nav-link py-3 fw-bold rounded-3 @(activeFlow == "internal" ? "active shadow-sm" : "text-secondary")" 
+           asp-action="Process" asp-route-flow="internal" asp-route-date="@selectedDate.ToString("yyyy-MM-dd")">
+            <div class="d-flex align-items-center justify-content-center gap-2">
+                <div class="rounded-circle p-2 @(activeFlow == "internal" ? "bg-white text-primary" : "bg-primary-subtle text-primary")">
+                    <i class="bi bi-bicycle fs-5"></i>
+                </div>
+                <div class="text-start">
+                    <div class="fs-6">Luồng 1: Giao Nội Bộ TP.HCM (Nhóm Shipper Nội Thành)</div>
+                    <small class="@(activeFlow == "internal" ? "text-white-50" : "text-muted")">Kho phân công &rarr; Shipper nhận hàng &rarr; Đã giao &amp; thu tiền &rarr; Nộp tiền về kho hoàn tất</small>
+                </div>
+                <span class="badge @(activeFlow == "internal" ? "bg-white text-primary" : "bg-primary") rounded-pill ms-2">@internalTotalTrips chuyến</span>
+            </div>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link py-3 fw-bold rounded-3 @(activeFlow == "thirdparty" ? "active shadow-sm" : "text-secondary")" 
+           asp-action="Process" asp-route-flow="thirdparty" asp-route-date="@selectedDate.ToString("yyyy-MM-dd")">
+            <div class="d-flex align-items-center justify-content-center gap-2">
+                <div class="rounded-circle p-2 @(activeFlow == "thirdparty" ? "bg-white text-success" : "bg-success-subtle text-success")">
+                    <i class="bi bi-truck fs-5"></i>
+                </div>
+                <div class="text-start">
+                    <div class="fs-6">Luồng 2: Giao Bên Thứ Ba (Giao Hàng Nhanh / Đi Tỉnh)</div>
+                    <small class="@(activeFlow == "thirdparty" ? "text-white-50" : "text-muted")">Nhân viên bàn giao GHN &rarr; Vận chuyển liên tỉnh &rarr; Nhận tiền đối soát chuyển khoản</small>
+                </div>
+                <span class="badge @(activeFlow == "thirdparty" ? "bg-white text-success" : "bg-success") rounded-pill ms-2">@tpTotal đơn</span>
+            </div>
+        </a>
+    </li>
+</ul>
+
+@if (activeFlow == "internal")
+{
+    <!-- ========================================================================= -->
+    <!-- LUỒNG 1: GIAO NỘI BỘ TP.HCM (NHÓM SHIPPER NỘI THÀNH) -->
+    <!-- ========================================================================= -->
+
+    <!-- STEPPER QUY TRÌNH 4 BƯỚC NỘI BỘ -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
+        <div class="card-body p-4">
+            <h6 class="fw-bold text-dark mb-3"><i class="bi bi-diagram-3-fill text-primary me-2"></i>Quy trình 4 bước giao hàng nội bộ TP.HCM &amp; Phân công trách nhiệm</h6>
+            <div class="row g-3 text-center">
+                <div class="col-md-3">
+                    <div class="p-3 rounded-4 bg-light border h-100 position-relative">
+                        <span class="badge bg-primary rounded-pill mb-2">Bước 1</span>
+                        <div class="fw-bold text-dark">Phân công Shipper</div>
+                        <p class="small text-muted mb-0 mt-1">
+                            <strong>Nhân viên kho</strong> phân công shipper, ghi tên người giao và <strong>giờ nhận hàng/xuất kho</strong>.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 rounded-4 bg-light border h-100 position-relative">
+                        <span class="badge bg-info text-dark rounded-pill mb-2">Bước 2</span>
+                        <div class="fw-bold text-dark">Shipper nhận hàng</div>
+                        <p class="small text-muted mb-0 mt-1">
+                            <strong>Shipper</strong> bấm nút xác nhận đã nhận hàng xuất kho, bắt đầu di chuyển giao các điểm dừng.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 rounded-4 bg-light border h-100 position-relative">
+                        <span class="badge bg-warning text-dark rounded-pill mb-2">Bước 3</span>
+                        <div class="fw-bold text-dark">Đã giao &amp; Thu tiền</div>
+                        <p class="small text-muted mb-0 mt-1">
+                            <strong>Shipper</strong> xác nhận đã giao từng đơn và thu tiền COD. Đơn chuyển trạng thái chờ nộp tiền.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 rounded-4 bg-light border h-100 position-relative border-success">
+                        <span class="badge bg-success rounded-pill mb-2">Bước 4 (Hoàn tất)</span>
+                        <div class="fw-bold text-success">Kho nhận tiền &rarr; Hoàn thành</div>
+                        <p class="small text-muted mb-0 mt-1">
+                            <strong>Shipper nộp tiền</strong> về kho. <strong>Nhân viên kho/Thu ngân</strong> nhận đủ tiền thì đơn mới <strong>Hoàn thành</strong>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 THẺ CHỈ SỐ NHANH -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-warning">
+                <div class="text-muted small fw-bold text-uppercase">Chờ / Đã phân công</div>
+                <div class="fs-3 fw-900 text-dark">@internalAssigned <span class="fs-6 fw-normal text-muted">chuyến</span></div>
+                <small class="text-muted">Chờ xuất kho bàn giao shipper</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-info">
+                <div class="text-muted small fw-bold text-uppercase">Đang đi giao hàng</div>
+                <div class="fs-3 fw-900 text-info">@internalInTransit <span class="fs-6 fw-normal text-muted">chuyến</span></div>
+                <small class="text-muted">Shipper đã nhận hàng và đang giao</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-primary">
+                <div class="text-muted small fw-bold text-uppercase">Chờ nộp tiền về kho</div>
+                <div class="fs-3 fw-900 text-primary">@internalAwaitingSettlement <span class="fs-6 fw-normal text-muted">chuyến</span></div>
+                <small class="text-muted">Đã giao, shipper đang giữ tiền COD</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-success">
+                <div class="text-muted small fw-bold text-uppercase">Đã nộp tiền hoàn tất</div>
+                <div class="fs-3 fw-900 text-success">@internalSettled <span class="fs-6 fw-normal text-muted">chuyến</span></div>
+                <small class="text-muted">Kho đã nhận đủ tiền COD &rarr; Hoàn thành</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- DANH SÁCH CÁC CHUYẾN GIAO NỘI BỘ VÀ CẬP NHẬT TRẠNG THÁI -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
+            <div>
+                <h5 class="fw-700 mb-0">📋 Danh sách chuyến giao nội bộ TP.HCM ngày @selectedDate.ToString("dd/MM/yyyy")</h5>
+                <small class="text-muted">Thực hiện phân công, bàn giao, xác nhận xuất phát và nhận nộp tiền trực tiếp bằng form/nút bấm</small>
+            </div>
+            <div class="d-flex gap-2">
+                <a asp-action="Planner" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3 shadow-xs">
+                    <i class="bi bi-calendar-plus me-1"></i> Lập chuyến mới
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            @if (!internalTrips.Any())
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-bicycle" style="font-size:3.5rem;"></i>
+                    <p class="mt-2 mb-3">Chưa có chuyến giao hàng nội bộ nào trong ngày @selectedDate.ToString("dd/MM/yyyy").</p>
+                    <a asp-action="Planner" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="bi bi-plus-circle me-1"></i> Lập chuyến giao hàng nội bộ ngay
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr class="small text-secondary text-uppercase fw-bold">
+                                <th class="px-4 py-3">Mã chuyến</th>
+                                <th class="py-3">Cụm giao &amp; Ca</th>
+                                <th class="py-3">Phân công Shipper</th>
+                                <th class="py-3">Giờ nhận hàng (Bàn giao)</th>
+                                <th class="py-3 text-center">Số đơn</th>
+                                <th class="py-3 text-end">Tiền COD thu</th>
+                                <th class="py-3">Trạng thái chuyến</th>
+                                <th class="py-3 px-4 text-end">Hành động cập nhật</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in internalTrips)
+                            {
+                                string statusBadge = t.Status switch
+                                {
+                                    "Draft" => "bg-secondary",
+                                    "Assigned" => "bg-warning text-dark",
+                                    "InTransit" => "bg-info text-dark",
+                                    "Completed" => "bg-success",
+                                    _ => "bg-secondary"
+                                };
+                                string statusLabel = t.Status switch
+                                {
+                                    "Draft" => "Mới lập (Chưa gán)",
+                                    "Assigned" => "Đã phân công",
+                                    "InTransit" => "Đang đi giao",
+                                    "Completed" => "Đã hoàn thành",
+                                    _ => t.Status
+                                };
+
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <a asp-action="Detail" asp-route-id="@t.Id" class="fw-bold font-monospace text-primary text-decoration-none">
+                                            @t.TripCode
+                                        </a>
+                                    </td>
+                                    <td class="py-3">
+                                        <div class="fw-bold text-dark">@t.ClusterCode</div>
+                                        <div class="small text-muted">Ca: @(t.Shift == "Morning" ? "Sáng" : (t.Shift == "Afternoon" ? "Chiều" : "Tối"))</div>
+                                    </td>
+                                    <td class="py-3">
+                                        @if (t.ShipperUser != null)
+                                        {
+                                            <div class="fw-bold text-dark"><i class="bi bi-person-fill text-primary me-1"></i>@t.ShipperUser.FullName</div>
+                                            <div class="small text-muted">SĐT: @(t.ShipperUser.PhoneNumber ?? "—")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Chưa phân công</span>
+                                        }
+                                    </td>
+                                    <td class="py-3">
+                                        @if (t.DepartureTime.HasValue)
+                                        {
+                                            <div class="fw-bold text-dark"><i class="bi bi-clock-history me-1 text-primary"></i>@t.DepartureTime.Value.ToString("HH:mm dd/MM")</div>
+                                            <div class="small text-muted">Bởi: @(t.HandoverStaffName ?? "Nhân viên kho")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted fst-italic">Chưa xuất kho</span>
+                                        }
+                                    </td>
+                                    <td class="py-3 text-center">
+                                        <span class="badge bg-light text-dark border font-monospace fs-6">@t.TotalOrders</span>
+                                    </td>
+                                    <td class="py-3 text-end font-monospace">
+                                        <div class="fw-bold text-dark">@t.TotalCodCollected.ToString("N0") đ</div>
+                                        <div class="small text-muted">Dự kiến: @t.TotalCodExpected.ToString("N0") đ</div>
+                                    </td>
+                                    <td class="py-3">
+                                        <span class="badge @statusBadge px-2.5 py-1.5 rounded-pill fw-bold">@statusLabel</span>
+                                        @if (t.SettlementStatus == "Settled")
+                                        {
+                                            <div class="small text-success fw-bold mt-1"><i class="bi bi-check2-all me-1"></i>Đã nộp tiền về kho</div>
+                                        }
+                                        else if (t.TotalCodCollected > 0)
+                                        {
+                                            <div class="small text-danger fw-bold mt-1"><i class="bi bi-exclamation-circle me-1"></i>Chờ nộp tiền</div>
+                                        }
+                                    </td>
+                                    <td class="py-3 px-4 text-end">
+                                        <div class="d-flex justify-content-end align-items-center gap-1">
+                                            @if (t.Status == "Draft" || t.ShipperUserId == null)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-xs text-nowrap"
+                                                        onclick="openAssignShipperModal(@t.Id, '@t.TripCode', '@(t.ShipperUserId ?? 0)')">
+                                                    <i class="bi bi-person-plus me-1"></i> Phân công Shipper
+                                                </button>
+                                            }
+                                            else if (t.Status == "Assigned")
+                                            {
+                                                <form asp-action="StartTrip" method="post" class="d-inline">
+                                                    <input type="hidden" name="tripId" value="@t.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-info text-dark rounded-pill px-3 fw-bold shadow-xs text-nowrap"
+                                                            onclick="return confirm('Xác nhận Shipper @(t.ShipperUser?.FullName) đã nhận hàng và bắt đầu xuất phát?')">
+                                                        <i class="bi bi-play-fill me-1"></i> Shipper nhận hàng &amp; Đi giao
+                                                    </button>
+                                                </form>
+                                            }
+                                            else if (t.Status == "InTransit" && t.SettlementStatus == "Unsettled" && t.TotalCodCollected > 0)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-xs text-nowrap"
+                                                        onclick="openSettleTripModal(@t.Id, '@t.TripCode', @t.TotalCodCollected, '@(t.ShipperUser?.FullName ?? "Shipper")')">
+                                                    <i class="bi bi-cash-stack me-1"></i> Kho nhận nộp tiền (Hoàn tất)
+                                                </button>
+                                            }
+                                            <a asp-action="Detail" asp-route-id="@t.Id" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 shadow-xs" title="Xem chi tiết các điểm dừng">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <!-- ========================================================================= -->
+    <!-- LUỒNG 2: GIAO BÊN THỨ BA (GIAO HÀNG NHANH / ĐI TỈNH) -->
+    <!-- ========================================================================= -->
+
+    <!-- STEPPER QUY TRÌNH 3 BƯỚC BÊN THỨ 3 -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
+        <div class="card-body p-4">
+            <h6 class="fw-bold text-dark mb-3"><i class="bi bi-diagram-3-fill text-success me-2"></i>Quy trình giao hàng bên thứ ba (Giao Hàng Nhanh / Đi tỉnh) &amp; Nhận tiền đối soát</h6>
+            <div class="row g-3 text-center">
+                <div class="col-md-4">
+                    <div class="p-3 rounded-4 bg-light border h-100">
+                        <span class="badge bg-success rounded-pill mb-2">Bước 1</span>
+                        <div class="fw-bold text-dark">Bàn giao bưu cục GHN</div>
+                        <p class="small text-muted mb-0 mt-1">
+                            Ghi rõ <strong>Nhân viên kho bàn giao</strong>, mã vận đơn GHN và ngày giờ gửi hàng đi tỉnh.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 rounded-4 bg-light border h-100">
+                        <span class="badge bg-info text-dark rounded-pill mb-2">Bước 2</span>
+                        <div class="fw-bold text-dark">Vận chuyển &amp; Thu hộ COD</div>
+                        <p class="small text-muted mb-0 mt-1">
+                            Bên chuyển phát giao hàng cho khách hàng tại các tỉnh thành và thu hộ tiền hàng (COD).
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 rounded-4 bg-light border h-100 border-success">
+                        <span class="badge bg-success rounded-pill mb-2">Bước 3 (Hoàn tất)</span>
+                        <div class="fw-bold text-success">Nhận tiền đối soát &rarr; Hoàn thành</div>
+                        <p class="small text-muted mb-0 mt-1">
+                            Ghi nhận <strong>ngày nhận tiền</strong>, <strong>hình thức chuyển khoản</strong> ngân hàng. Nhận tiền xong thì <strong>Đơn hoàn thành</strong>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3 THẺ CHỈ SỐ BÊN THỨ BA -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-warning">
+                <div class="text-muted small fw-bold text-uppercase">Chờ bàn giao bưu cục</div>
+                <div class="fs-3 fw-900 text-warning">@tpPendingHandover <span class="fs-6 fw-normal text-muted">đơn</span></div>
+                <small class="text-muted">Đơn hàng đi tỉnh cần nhân viên mang ra GHN</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-info">
+                <div class="text-muted small fw-bold text-uppercase">Đang vận chuyển liên tỉnh</div>
+                <div class="fs-3 fw-900 text-info">@tpDelivering <span class="fs-6 fw-normal text-muted">đơn</span></div>
+                <small class="text-muted">Đã giao GHN, đang giao đến khách và thu COD</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-success">
+                <div class="text-muted small fw-bold text-uppercase">Đã nhận tiền đối soát</div>
+                <div class="fs-3 fw-900 text-success">@tpCompleted <span class="fs-6 fw-normal text-muted">đơn</span></div>
+                <small class="text-muted">Đã nhận chuyển khoản từ GHN &rarr; Hoàn tất</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- BẢNG ĐƠN HÀNG GIAO QUA GHN / ĐI TỈNH -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 pt-4 px-4 d-flex align-items-center justify-content-between">
+            <div>
+                <h5 class="fw-700 mb-0">📦 Danh sách đơn hàng đi tỉnh qua bưu cục (GHN)</h5>
+                <small class="text-muted">Cập nhật trực tiếp bằng nút/form: Nhân viên bàn giao bưu cục và Nhận tiền đối soát chuyển khoản</small>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            @if (!thirdPartyOrders.Any())
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-truck" style="font-size:3.5rem;"></i>
+                    <p class="mt-2 mb-3">Chưa có đơn hàng chuyển phát đi tỉnh nào liên quan đến ngày @selectedDate.ToString("dd/MM/yyyy").</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr class="small text-secondary text-uppercase fw-bold">
+                                <th class="px-4 py-3">Mã đơn</th>
+                                <th class="py-3">Khách hàng &amp; Địa chỉ giao</th>
+                                <th class="py-3 text-end">Tổng tiền</th>
+                                <th class="py-3">Nhân viên bàn giao GHN</th>
+                                <th class="py-3">Đối soát nhận tiền</th>
+                                <th class="py-3">Trạng thái đơn</th>
+                                <th class="py-3 px-4 text-end">Hành động cập nhật</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var o in thirdPartyOrders)
+                            {
+                                bool isHandedOver = !string.IsNullOrEmpty(o.CarrierStaffName) || !string.IsNullOrEmpty(o.GhnOrderCode);
+                                bool isPaidAndCompleted = o.OrderStatus == "Completed";
+
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <a asp-controller="Orders" asp-action="Details" asp-route-id="@o.Id" class="fw-bold font-monospace text-success text-decoration-none">
+                                            #@o.OrderCode
+                                        </a>
+                                        @if (!string.IsNullOrEmpty(o.GhnOrderCode))
+                                        {
+                                            <div class="small font-monospace text-primary mt-1">
+                                                <i class="bi bi-upc-scan me-1"></i>@o.GhnOrderCode
+                                            </div>
+                                        }
+                                    </td>
+                                    <td class="py-3">
+                                        <div class="fw-bold text-dark">@o.CustomerName</div>
+                                        <div class="small text-muted"><i class="bi bi-telephone me-1"></i>@o.PhoneNumber</div>
+                                        <div class="small text-secondary text-truncate" style="max-width:240px;" title="@o.ShippingAddress">
+                                            <i class="bi bi-geo-alt me-1"></i>@o.ShippingAddress
+                                        </div>
+                                    </td>
+                                    <td class="py-3 text-end font-monospace">
+                                        <div class="fw-bold text-dark">@o.FinalAmount.ToString("N0") đ</div>
+                                        <div class="small text-muted">(@o.PaymentMethod)</div>
+                                    </td>
+                                    <td class="py-3">
+                                        @if (isHandedOver)
+                                        {
+                                            <div class="fw-bold text-dark"><i class="bi bi-person-check-fill text-success me-1"></i>@o.CarrierStaffName</div>
+                                            <div class="small text-muted"><i class="bi bi-clock me-1"></i>@(o.CarrierHandoverAt?.ToString("HH:mm dd/MM") ?? "—")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Chưa giao bưu cục</span>
+                                        }
+                                    </td>
+                                    <td class="py-3">
+                                        @if (isPaidAndCompleted)
+                                        {
+                                            <div class="fw-bold text-success"><i class="bi bi-check-circle-fill me-1"></i>Đã nhận tiền</div>
+                                            <div class="small text-muted">Ngày: @(o.CarrierPaymentReceivedDate?.ToString("dd/MM/yyyy") ?? o.CompletedAt?.ToString("dd/MM/yyyy"))</div>
+                                            <div class="small text-muted">HT: @(o.CarrierPaymentMethod ?? "Chuyển khoản")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-light text-muted border">Chưa nhận tiền</span>
+                                        }
+                                    </td>
+                                    <td class="py-3">
+                                        <span class="badge @(isPaidAndCompleted ? "bg-success" : (isHandedOver ? "bg-info text-dark" : "bg-warning text-dark")) px-2.5 py-1.5 rounded-pill fw-bold">
+                                            @(isPaidAndCompleted ? "Đã hoàn thành" : (isHandedOver ? "Đang chuyển phát" : "Chờ bàn giao"))
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-4 text-end">
+                                        <div class="d-flex justify-content-end align-items-center gap-1">
+                                            @if (!isHandedOver)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 fw-bold shadow-xs text-nowrap"
+                                                        onclick="openHandoverCarrierModal(@o.Id, '@o.OrderCode', '@(o.GhnOrderCode ?? "")')">
+                                                    <i class="bi bi-send-check me-1"></i> Bàn giao bưu cục GHN
+                                                </button>
+                                            }
+                                            else if (!isPaidAndCompleted)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-xs text-nowrap"
+                                                        onclick="openConfirmCarrierPaymentModal(@o.Id, '@o.OrderCode', @o.FinalAmount)">
+                                                    <i class="bi bi-cash-coin me-1"></i> Nhận tiền đối soát
+                                                </button>
+                                            }
+                                            <a asp-controller="Orders" asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 shadow-xs" title="Xem chi tiết đơn hàng">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL: PHÂN CÔNG SHIPPER & GHI GIỜ NHẬN HÀNG (YÊU CẦU 3 - LUỒNG NỘI BỘ) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="assignShipperModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom px-4 py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-2 text-primary">
+                        <i class="bi bi-person-badge fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-800 text-dark mb-0">Phân công Shipper nội thành</h5>
+                        <small class="text-muted">Nhân viên kho phân công nhân viên giao hàng, ghi tên và giờ nhận hàng</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <form id="assignShipperForm" method="post" asp-action="AssignShipper">
+                    <input type="hidden" name="tripId" id="assignTripId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Mã chuyến giao hàng</label>
+                        <input type="text" id="assignTripCode" class="form-control font-monospace fw-bold bg-white" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Nhân viên kho phụ trách phân công &amp; bàn giao <span class="text-danger">*</span></label>
+                        <input type="text" name="handoverStaffName" class="form-control shadow-xs" value="@currentUserName" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Chọn Shipper nội thành (TP.HCM) <span class="text-danger">*</span></label>
+                        <select name="shipperUserId" id="assignShipperSelect" class="form-select shadow-xs" required>
+                            <option value="">-- Chọn nhân viên giao hàng --</option>
+                            @foreach (var s in shippers)
+                            {
+                                <option value="@s.Id">@s.FullName — SĐT: @(s.PhoneNumber ?? "N/A") [@(s.Position ?? "Shipper")]</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Giờ Shipper nhận hàng xuất kho <span class="text-danger">*</span></label>
+                        <input type="datetime-local" name="departureTime" class="form-control shadow-xs" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required />
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 pt-2">
+                        <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-check2-circle me-1"></i> Xác nhận phân công &amp; Bàn giao
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: KHO NHẬN TIỀN NỘP TỪ SHIPPER & HOÀN THÀNH ĐƠN (YÊU CẦU 3) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="settleTripModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom px-4 py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-2 text-success">
+                        <i class="bi bi-cash-stack fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-800 text-dark mb-0">Kho nhận nộp tiền COD &amp; Hoàn tất đơn</h5>
+                        <small class="text-muted">Shipper nộp tiền về kho, nhân viên kho nhận tiền thì đơn mới hoàn thành</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <form id="settleTripForm" method="post" asp-action="SettleTrip">
+                    <input type="hidden" name="tripId" id="settleTripId" />
+                    <div class="card border-0 shadow-xs rounded-3 p-3 bg-white mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">Mã chuyến:</span>
+                            <span id="settleTripCode" class="fw-bold font-monospace text-primary"></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted small">Shipper nộp tiền:</span>
+                            <span id="settleShipperName" class="fw-bold text-dark"></span>
+                        </div>
+                        <div class="d-flex justify-content-between pt-2 border-top">
+                            <span class="text-secondary small fw-bold">Tổng tiền COD Shipper đã thu:</span>
+                            <span id="settleExpectedAmount" class="text-success fw-900 font-monospace fs-5">0 đ</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Số tiền nhân viên kho thực nhận (VNĐ) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" name="receivedAmount" id="settleReceivedAmountInput" class="form-control form-control-lg font-monospace fw-bold text-end" required />
+                            <span class="input-group-text bg-white fw-bold">VNĐ</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Ghi chú đối soát</label>
+                        <input type="text" name="notes" class="form-control shadow-xs" placeholder="Ghi chú đếm tiền hoặc nộp tiền..." />
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 pt-2">
+                        <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-check2-circle me-1"></i> Xác nhận nhận tiền &amp; Hoàn tất đơn
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: BÀN GIAO CHO BƯU CỤC GHN (YÊU CẦU 3 - LUỒNG BÊN THỨ 3) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="handoverCarrierModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom px-4 py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-2 text-warning">
+                        <i class="bi bi-box-arrow-up-right fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-800 text-dark mb-0">Bàn giao bưu cục Giao Hàng Nhanh</h5>
+                        <small class="text-muted">Ghi rõ nhân viên chuyển và mã vận đơn bên thứ ba</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <form id="handoverCarrierForm" method="post" asp-action="HandoverCarrier">
+                    <input type="hidden" name="orderId" id="handoverOrderId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Mã đơn hàng</label>
+                        <input type="text" id="handoverOrderCode" class="form-control font-monospace fw-bold bg-white" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Nhân viên phụ trách chuyển hàng qua bưu cục <span class="text-danger">*</span></label>
+                        <input type="text" name="carrierStaffName" class="form-control shadow-xs" value="@currentUserName" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Mã vận đơn GHN / Bên chuyển phát <span class="text-danger">*</span></label>
+                        <input type="text" name="ghnOrderCode" id="handoverGhnCodeInput" class="form-control font-monospace shadow-xs" placeholder="VD: GHN-SG-889102" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Giờ bàn giao cho bưu cục <span class="text-danger">*</span></label>
+                        <input type="datetime-local" name="handoverAt" class="form-control shadow-xs" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required />
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 pt-2">
+                        <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-warning text-dark rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-check2-circle me-1"></i> Xác nhận đã bàn giao GHN
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: NHẬN TIỀN ĐỐI SOÁT TỪ BÊN CHUYỂN PHÁT (YÊU CẦU 3 - LUỒNG BÊN THỨ 3) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="confirmCarrierPaymentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-white border-bottom px-4 py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-2 text-success">
+                        <i class="bi bi-bank fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-800 text-dark mb-0">Nhận tiền đối soát từ GHN (Đi tỉnh)</h5>
+                        <small class="text-muted">Ghi rõ ngày nhận tiền, hình thức chuyển khoản để hoàn tất đơn và tính doanh thu</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <form id="confirmCarrierPaymentForm" method="post" asp-action="ConfirmCarrierPayment">
+                    <input type="hidden" name="orderId" id="carrierPaymentOrderId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Mã đơn hàng</label>
+                        <input type="text" id="carrierPaymentOrderCode" class="form-control font-monospace fw-bold bg-white" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Số tiền đối soát nhận được (VNĐ) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" name="amount" id="carrierPaymentAmountInput" class="form-control form-control-lg font-monospace fw-bold text-end" required />
+                            <span class="input-group-text bg-white fw-bold">VNĐ</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Ngày thực nhận tiền vào tài khoản <span class="text-danger">*</span></label>
+                        <input type="date" name="receivedDate" class="form-control shadow-xs" value="@DateTime.Now.ToString("yyyy-MM-dd")" required />
+                        <small class="text-muted font-monospace" style="font-size:11px;">(Đơn hoàn thành được tính vào doanh thu theo ngày nhận tiền)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Hình thức chuyển khoản / Thanh toán <span class="text-danger">*</span></label>
+                        <select name="paymentMethod" class="form-select shadow-xs" required>
+                            <option value="Chuyển khoản MB Bank" selected>Chuyển khoản MB Bank (Tài khoản đối soát)</option>
+                            <option value="Chuyển khoản Vietcombank">Chuyển khoản Vietcombank</option>
+                            <option value="Chuyển khoản VietinBank">Chuyển khoản VietinBank</option>
+                            <option value="Tiền mặt bưu cục">Tiền mặt tại quầy bưu cục</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Mã giao dịch / Ghi chú đối soát</label>
+                        <input type="text" name="note" class="form-control shadow-xs" placeholder="VD: GD-GHN-994812 / Đợt đối soát tuần..." />
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 pt-2">
+                        <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-check2-circle me-1"></i> Xác nhận nhận tiền &amp; Hoàn tất đơn
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openAssignShipperModal(tripId, tripCode, currentShipperId) {
+            document.getElementById('assignTripId').value = tripId;
+            document.getElementById('assignTripCode').value = tripCode;
+            if (currentShipperId && currentShipperId !== '0') {
+                document.getElementById('assignShipperSelect').value = currentShipperId;
+            }
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('assignShipperModal')).show();
+        }
+
+        function openSettleTripModal(tripId, tripCode, amount, shipperName) {
+            document.getElementById('settleTripId').value = tripId;
+            document.getElementById('settleTripCode').innerText = tripCode;
+            document.getElementById('settleShipperName').innerText = shipperName;
+            document.getElementById('settleExpectedAmount').innerText = Number(amount).toLocaleString('vi-VN') + ' đ';
+            document.getElementById('settleReceivedAmountInput').value = amount;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('settleTripModal')).show();
+        }
+
+        function openHandoverCarrierModal(orderId, orderCode, ghnCode) {
+            document.getElementById('handoverOrderId').value = orderId;
+            document.getElementById('handoverOrderCode').value = '#' + orderCode;
+            document.getElementById('handoverGhnCodeInput').value = ghnCode || ('GHN-' + orderCode);
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('handoverCarrierModal')).show();
+        }
+
+        function openConfirmCarrierPaymentModal(orderId, orderCode, amount) {
+            document.getElementById('carrierPaymentOrderId').value = orderId;
+            document.getElementById('carrierPaymentOrderCode').value = '#' + orderCode;
+            document.getElementById('carrierPaymentAmountInput').value = amount;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmCarrierPaymentModal')).show();
+        }
+    </script>
+}

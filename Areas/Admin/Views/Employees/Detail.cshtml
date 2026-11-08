@@ -1,0 +1,75 @@
+@model BeautyShop.Models.User
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Chi tiết nhân viên";
+}
+
+<div class="page-hdr d-flex justify-content-between align-items-center mb-4">
+    <h2>Chi tiết nhân viên</h2>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("Edit", "Employees", new { id = Model.Id })" class="btn btn-ae">
+            <i class="bi bi-pencil"></i> Chỉnh sửa
+        </a>
+        <a href="@Url.Action("Index", "Employees")" class="btn btn-as">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="admin-card text-center h-100">
+            <div class="admin-card-body d-flex flex-column align-items-center justify-content-center">
+                <div class="rounded-circle d-flex align-items-center justify-content-center text-white mb-3" style="width: 120px; height: 120px; background: linear-gradient(135deg, #006E4A 0%, #00a871 100%); font-size: 48px;">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <h3 class="mb-1 fw-bold">@Model.FullName</h3>
+                <p class="text-muted mb-3">@Model.Email</p>
+                <div class="mb-3">
+                    @if (Model.IsActive)
+                    {
+                        <span class="bdg-green px-3 py-2">Hoạt động</span>
+                    }
+                    else
+                    {
+                        <span class="bdg-red px-3 py-2">Đã khóa</span>
+                    }
+                </div>
+                <hr class="w-100" />
+                <div class="text-start w-100 mt-2">
+                    <p class="mb-2"><strong><i class="bi bi-telephone me-2"></i>Số điện thoại:</strong> @(string.IsNullOrEmpty(Model.PhoneNumber) ? "Chưa cập nhật" : Model.PhoneNumber)</p>
+                    <p class="mb-2"><strong><i class="bi bi-shield-lock me-2"></i>Vai trò:</strong> @Model.Role</p>
+                    <p class="mb-0"><strong><i class="bi bi-calendar-date me-2"></i>Ngày tạo:</strong> @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8 mb-4">
+        <div class="admin-card h-100">
+            <div class="admin-card-header">
+                <h5 class="mb-0">Thống kê hoạt động</h5>
+            </div>
+            <div class="admin-card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="p-3 border rounded">
+                            <h6 class="text-muted mb-2">Đơn hàng đã xử lý</h6>
+                            <h3 class="mb-0">0</h3>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border rounded">
+                            <h6 class="text-muted mb-2">Đánh giá đã duyệt</h6>
+                            <h3 class="mb-0">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 text-center text-muted">
+                    <i class="bi bi-graph-up text-light" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Hệ thống đang thu thập thêm dữ liệu thống kê hoạt động.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

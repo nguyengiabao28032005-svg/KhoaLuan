@@ -1,0 +1,260 @@
+@model IEnumerable<BeautyShop.Models.DeliveryTrip>
+@{
+    ViewData["Title"] = "Quyết toán tiền COD theo chuyến";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var tripDate = (DateTime)ViewBag.TripDate;
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">💵 Thu ngân: Quyết toán tiền COD theo chuyến</h2>
+        <p class="text-muted mb-0">Xác nhận số tiền mặt thực tế Shipper mang về nộp sau khi hoàn tất các chuyến giao</p>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex gap-2">
+            <input type="date" name="date" class="form-control form-control-sm" value="@tripDate.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </form>
+        <a asp-action="Reconciliation" class="btn btn-outline-primary fw-bold rounded-3 shadow-sm px-3 py-2 bg-white">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Bảng đối soát cuối ngày
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>@TempData["SuccessMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>@TempData["ErrorMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+    <div class="card-header bg-light border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold text-dark mb-0">
+            <i class="bi bi-wallet2 me-2 text-primary"></i>Các chuyến giao hàng ngày @tripDate.ToString("dd/MM/yyyy")
+        </h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-secondary small fw-bold text-uppercase">
+                <tr>
+                    <th class="ps-4">Mã chuyến</th>
+                    <th>Ca giao</th>
+                    <th>Shipper nộp tiền</th>
+                    <th>Tổng đơn</th>
+                    <th>Giao thành công</th>
+                    <th>Tiền COD thực thu</th>
+                    <th>Tiền thực nộp</th>
+                    <th>Chênh lệch</th>
+                    <th>Thu ngân xác nhận</th>
+                    <th>Trạng thái</th>
+                    <th class="pe-4 text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Any())
+                {
+                    foreach (var trip in Model)
+                    {
+                        var deliveredCount = trip.Stops.Count(s => s.StopStatus == "Success");
+                        var failedCount = trip.Stops.Count(s => s.StopStatus == "Failed");
+                        bool isSettled = trip.SettlementStatus == "Settled";
+
+                        <tr>
+                            <td class="ps-4 font-monospace fw-bold text-primary">
+                                <a asp-action="Detail" asp-route-id="@trip.Id" class="text-decoration-none">@trip.TripCode</a>
+                            </td>
+                            <td><span class="badge bg-light text-dark border">@DeliveryConfig.GetShiftDisplayName(trip.Shift)</span></td>
+                            <td>
+                                @if (trip.ShipperUser != null)
+                                {
+                                    <span class="fw-bold text-dark"><i class="bi bi-person-fill text-primary me-1"></i>@trip.ShipperUser.FullName</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td>@trip.TotalOrders đơn</td>
+                            <td>
+                                <span class="badge bg-success-subtle text-success fw-bold">@deliveredCount thành công</span>
+                                @if (failedCount > 0)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger fw-bold ms-1">@failedCount thất bại</span>
+                                }
+                            </td>
+                            <td class="fw-bold text-dark">@trip.TotalCodCollected.ToString("N0") đ</td>
+                            <td class="fw-bold text-primary">
+                                @(trip.SettlementReceivedAmount.HasValue ? trip.SettlementReceivedAmount.Value.ToString("N0") + " đ" : "—")
+                            </td>
+                            <td>
+                                @if (trip.SettlementDifference.HasValue)
+                                {
+                                    @if (trip.SettlementDifference.Value == 0)
+                                    {
+                                        <span class="badge bg-success-subtle text-success fw-bold">Khớp 100%</span>
+                                    }
+                                    else if (trip.SettlementDifference.Value < 0)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger fw-bold">
+                                            Thiếu @Math.Abs(trip.SettlementDifference.Value).ToString("N0") đ
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info-subtle text-info fw-bold">
+                                            Dư @trip.SettlementDifference.Value.ToString("N0") đ
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (trip.CashierUser != null)
+                                {
+                                    <div class="small fw-bold text-dark">@trip.CashierUser.FullName</div>
+                                    <div class="text-muted" style="font-size: 11px;">@trip.SettledAt?.ToString("HH:mm dd/MM")</div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (isSettled)
+                                {
+                                    <span class="badge bg-success-subtle text-success px-3 py-1 rounded-pill fw-bold">
+                                        <i class="bi bi-check2-all me-1"></i> Đã quyết toán
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning-subtle text-warning px-3 py-1 rounded-pill fw-bold">
+                                        Chờ nộp tiền
+                                    </span>
+                                }
+                            </td>
+                            <td class="pe-4 text-end">
+                                @if (!isSettled)
+                                {
+                                    <button type="button" class="btn btn-sm btn-primary fw-bold rounded-3 shadow-sm"
+                                            onclick="openSettleModal(@trip.Id, '@trip.TripCode', '@(trip.ShipperUser?.FullName ?? "Shipper")', @trip.TotalCodCollected)">
+                                        <i class="bi bi-cash me-1"></i> Nhận tiền COD
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-sm btn-light fw-bold rounded-3 text-secondary" disabled>
+                                        <i class="bi bi-lock-fill me-1"></i> Đã khóa
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="11" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                            Không có chuyến giao hàng nào trong ngày này.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL THU NGÂN NHẬN TIỀN COD -->
+<div class="modal fade" id="settleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-light rounded-top-4">
+                <h5 class="modal-title fw-800 text-dark">
+                    <i class="bi bi-cash-stack text-success me-2"></i>Thu ngân: Xác nhận nhận tiền COD
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="SettleTrip" method="post">
+                <input type="hidden" name="tripId" id="modal-settle-tripId" />
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold mb-0">Mã chuyến & Shipper:</label>
+                        <div class="fw-bold fs-6 text-dark" id="modal-settle-info"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold mb-0">Tổng tiền COD Shipper phải nộp:</label>
+                        <div class="fw-900 fs-4 text-danger" id="modal-settle-expected">0 đ</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Số tiền mặt thực nhận từ Shipper (VNĐ) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" name="receivedAmount" id="modal-settle-received" class="form-control py-2 fw-bold text-success fs-5 text-end" required oninput="calcDifference()" />
+                            <span class="input-group-text bg-light fw-bold">đ</span>
+                        </div>
+                    </div>
+                    <div class="alert alert-secondary py-2 small mb-3" id="diffAlert">
+                        Chênh lệch: <strong id="diffText">0 đ</strong>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-secondary">Ghi chú đối soát / Lý do chênh lệch (nếu có)</label>
+                        <input type="text" name="notes" class="form-control" placeholder="Ví dụ: Thiếu 20k do tiền lẻ, shipper nộp bổ sung sau..." />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold rounded-3" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-3 px-4 shadow-sm">
+                        <i class="bi bi-check-circle-fill me-1"></i> Xác nhận đã nhận tiền
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    var currentExpected = 0;
+    function openSettleModal(tripId, tripCode, shipperName, expectedAmount) {
+        document.getElementById('modal-settle-tripId').value = tripId;
+        document.getElementById('modal-settle-info').textContent = tripCode + ' — Shipper: ' + shipperName;
+        document.getElementById('modal-settle-expected').textContent = expectedAmount.toLocaleString('vi-VN') + ' đ';
+        document.getElementById('modal-settle-received').value = expectedAmount;
+        currentExpected = expectedAmount;
+        calcDifference();
+
+        var modal = new bootstrap.Modal(document.getElementById('settleModal'));
+        modal.show();
+    }
+
+    function calcDifference() {
+        var received = parseFloat(document.getElementById('modal-settle-received').value) || 0;
+        var diff = received - currentExpected;
+        var diffText = document.getElementById('diffText');
+        var diffAlert = document.getElementById('diffAlert');
+
+        if (diff === 0) {
+            diffText.textContent = 'Khớp 100% (0 đ)';
+            diffAlert.className = 'alert alert-success py-2 small mb-3';
+        } else if (diff < 0) {
+            diffText.textContent = 'Thiếu ' + Math.abs(diff).toLocaleString('vi-VN') + ' đ';
+            diffAlert.className = 'alert alert-danger py-2 small mb-3';
+        } else {
+            diffText.textContent = 'Thừa ' + diff.toLocaleString('vi-VN') + ' đ';
+            diffAlert.className = 'alert alert-info py-2 small mb-3';
+        }
+    }
+</script>

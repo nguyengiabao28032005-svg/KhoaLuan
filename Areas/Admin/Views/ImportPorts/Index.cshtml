@@ -1,0 +1,295 @@
+@model IEnumerable<BeautyShop.Models.ImportPort>
+@{
+    ViewData["Title"] = "Cảng nhập khẩu";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">⚓ Danh mục Cảng nhập khẩu</h2>
+        <p class="text-muted mb-0">Hệ thống cảng biển và sân bay quốc tế tiếp nhận luân chuyển hàng hóa nhập khẩu</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-primary fw-bold px-3 py-2 rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createPortModal">
+            <i class="bi bi-plus-circle-fill me-1"></i> Thêm cảng mới
+        </button>
+        <a asp-area="Admin" asp-controller="Inventory" asp-action="Receipts" class="btn btn-sm btn-outline-primary fw-bold px-3 py-2 rounded-3 shadow-sm bg-white">
+            <i class="bi bi-receipt me-1"></i> Bảng phiếu nhập kho
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill fs-5"></i>
+        <div>@TempData["SuccessMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>@TempData["ErrorMessage"]</div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- THỐNG KÊ NHANH -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-primary" style="background:#eff6ff;">
+                    <i class="bi bi-geo-alt-fill fs-3"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Tổng số cảng</div>
+                    <div class="fw-900 fs-3 text-dark">@(ViewBag.TotalPorts ?? 0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-info" style="background:#e0f2fe;">
+                    <i class="bi bi-water fs-3"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Cảng biển (Sea)</div>
+                    <div class="fw-900 fs-3 text-info">@(ViewBag.SeaPorts ?? 0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-warning" style="background:#fef3c7;">
+                    <i class="bi bi-airplane-engines fs-3"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Sân bay QT (Air)</div>
+                    <div class="fw-900 fs-3 text-warning">@(ViewBag.AirPorts ?? 0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-success" style="background:#f0fdf4;">
+                    <i class="bi bi-check2-circle fs-3"></i>
+                </div>
+                <div>
+                    <div class="text-muted small fw-bold text-uppercase">Đang mở nhập khẩu</div>
+                    <div class="fw-900 fs-3 text-success">@(ViewBag.ActivePorts ?? 0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BỘ LỌC TÌM KIẾM -->
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small fw-bold text-muted mb-1">Tìm kiếm cảng / tỉnh thành</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input type="text" name="keyword" class="form-control border-0 bg-light" placeholder="Nhập tên cảng, mã cảng hoặc tỉnh..." value="@ViewBag.Keyword" />
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">Loại cảng</label>
+            <select name="portType" class="form-select border-0 bg-light">
+                <option value="">-- Tất cả loại cảng --</option>
+                <option value="Sea" selected="@(ViewBag.PortType == "Sea")">⚓ Cảng biển (Sea)</option>
+                <option value="Air" selected="@(ViewBag.PortType == "Air")">✈️ Sân bay quốc tế (Air)</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted mb-1">Trạng thái tiếp nhận</label>
+            <select name="status" class="form-select border-0 bg-light">
+                <option value="">-- Tất cả --</option>
+                <option value="active" selected="@(ViewBag.Status == "active")">Đang mở nhập khẩu</option>
+                <option value="inactive" selected="@(ViewBag.Status == "inactive")">Tạm đóng tiếp nhận</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary w-100 fw-bold">
+                <i class="bi bi-funnel-fill me-1"></i> Lọc
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại bộ lọc">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- BẢNG DANH MỤC CẢNG -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4 text-secondary text-uppercase small fw-bold" style="width: 60px;">STT</th>
+                    <th class="text-secondary text-uppercase small fw-bold" style="width: 130px;">Mã cảng</th>
+                    <th class="text-secondary text-uppercase small fw-bold">Tên cảng</th>
+                    <th class="text-secondary text-uppercase small fw-bold" style="width: 140px;">Loại cảng</th>
+                    <th class="text-secondary text-uppercase small fw-bold" style="width: 200px;">Tỉnh / Thành phố</th>
+                    <th class="text-secondary text-uppercase small fw-bold">Căn cứ pháp lý</th>
+                    <th class="text-secondary text-uppercase small fw-bold text-center" style="width: 160px;">Nhập khẩu</th>
+                    <th class="pe-4 text-secondary text-uppercase small fw-bold text-end" style="width: 140px;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    int index = 1;
+                    foreach (var port in Model)
+                    {
+                        <tr>
+                            <td class="ps-4 text-muted fw-bold">@index</td>
+                            <td>
+                                <span class="badge bg-light text-dark border px-2 py-1 font-monospace">@port.PortCode</span>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark">@port.Name</div>
+                                @if (port.UpdatedAt.HasValue)
+                                {
+                                    <div class="text-muted" style="font-size:0.75rem;">Cập nhật: @port.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                }
+                            </td>
+                            <td>
+                                @if (port.PortType == "Sea")
+                                {
+                                    <span class="badge px-3 py-2 rounded-pill fw-bold" style="background:#e0f2fe; color:#0369a1;">
+                                        <i class="bi bi-water me-1"></i> Cảng biển
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge px-3 py-2 rounded-pill fw-bold" style="background:#fef3c7; color:#b45309;">
+                                        <i class="bi bi-airplane-engines me-1"></i> Cảng HKQT
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark">@port.ProvinceName</div>
+                                @if (!string.IsNullOrEmpty(port.ProvinceCode))
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary small">Mã tỉnh: @port.ProvinceCode</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="small text-muted" title="@port.SourceReference">
+                                    <i class="bi bi-bookmark-check text-primary me-1"></i>
+                                    @(string.IsNullOrWhiteSpace(port.SourceReference) ? "—" : port.SourceReference)
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                @if (port.AllowImport)
+                                {
+                                    <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold border border-success-subtle">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Đang mở
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger-subtle text-danger px-3 py-2 rounded-pill fw-bold border border-danger-subtle">
+                                        <i class="bi bi-slash-circle-fill me-1"></i> Tạm đóng
+                                    </span>
+                                }
+                            </td>
+                            <td class="pe-4 text-end">
+                                <form asp-action="ToggleStatus" asp-route-id="@port.Id" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn thay đổi trạng thái nhập khẩu của cảng @port.Name?');">
+                                    @if (port.AllowImport)
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-bold rounded-3" title="Tạm đóng nhập khẩu tại cảng này">
+                                            <i class="bi bi-toggle-on fs-6 me-1"></i> Tắt
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-success fw-bold rounded-3" title="Mở tiếp nhận nhập khẩu tại cảng này">
+                                            <i class="bi bi-toggle-off fs-6 me-1"></i> Bật
+                                        </button>
+                                    }
+                                </form>
+                            </td>
+                        </tr>
+                        index++;
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-geo-alt-fill fs-1 d-block mb-2 text-secondary"></i>
+                            Không tìm thấy cảng nhập khẩu nào phù hợp với bộ lọc.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL THÊM CẢNG MỚI -->
+<div class="modal fade" id="createPortModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 bg-light rounded-top-4">
+                <h5 class="modal-title fw-800 text-dark">
+                    <i class="bi bi-geo-alt-fill text-primary me-2"></i>Thêm Cảng / Sân bay nhập khẩu
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Create" method="post">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Tên cảng / Sân bay <span class="text-danger">*</span></label>
+                        <input type="text" name="Name" class="form-control" placeholder="Ví dụ: Sân bay Quốc tế Liên Khương" required />
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-secondary">Mã định danh cảng <span class="text-danger">*</span></label>
+                            <input type="text" name="PortCode" class="form-control text-uppercase" placeholder="Ví dụ: DLI-AIR" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-secondary">Loại cảng <span class="text-danger">*</span></label>
+                            <select name="PortType" class="form-select">
+                                <option value="Air">✈️ Hàng không (Air)</option>
+                                <option value="Sea">⚓ Cảng biển (Sea)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-8">
+                            <label class="form-label fw-bold small text-secondary">Tỉnh / Thành phố trực thuộc <span class="text-danger">*</span></label>
+                            <input type="text" name="ProvinceName" class="form-control" placeholder="Ví dụ: Tỉnh Lâm Đồng" required />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-bold small text-secondary">Mã tỉnh</label>
+                            <input type="text" name="ProvinceCode" class="form-control" placeholder="68" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Căn cứ pháp lý / Quyết định quy hoạch</label>
+                        <input type="text" name="SourceReference" class="form-control" placeholder="Ví dụ: Quyết định 648/QĐ-TTg & Cục Hàng không" />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold rounded-3" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary fw-bold rounded-3 px-4 shadow-sm">
+                        <i class="bi bi-check-circle-fill me-1"></i> Lưu cảng mới
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

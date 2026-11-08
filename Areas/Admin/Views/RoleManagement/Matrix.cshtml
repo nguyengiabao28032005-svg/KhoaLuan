@@ -1,0 +1,217 @@
+@{
+    ViewData["Title"] = "Ma trận Vai trò & Quyền chức năng (RBAC)";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var roles = ViewBag.Roles as List<BeautyShop.Models.Role> ?? new List<BeautyShop.Models.Role>();
+    var permissions = ViewBag.Permissions as List<BeautyShop.Models.Permission> ?? new List<BeautyShop.Models.Permission>();
+    var staffUsers = ViewBag.StaffUsers as List<BeautyShop.Models.User> ?? new List<BeautyShop.Models.User>();
+    var groupedPermissions = permissions.GroupBy(p => p.GroupName).ToList();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1">Phân quyền theo Nhóm Chức Năng &amp; Phạm vi Kho (Bước 6)</h4>
+        <p class="text-muted small mb-0">
+            Chia người dùng theo <strong>nhóm chức năng</strong> (Admin, Nhân viên kho, Thu ngân, Nhân viên giao hàng). Vùng miền/Kho chỉ dùng làm <strong>bộ lọc phạm vi dữ liệu (Data Scope)</strong>, không dùng để chia chức năng.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/Admin/Employees" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-people me-1"></i> Gán Vai trò &amp; Kho cho Nhân viên
+        </a>
+        <a href="/Admin/RoleManagement/AuditLogs" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-journal-text me-1"></i> Nhật ký phân quyền (Audit Log)
+        </a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-1"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- BẢNG 1: MA TRẬN VAI TRÒ x QUYỀN CHỨC NĂNG -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap me-2 text-primary"></i>1. Ma trận Vai trò &times; Quyền chức năng (Functional Permissions)</h6>
+        <span class="badge bg-light text-dark border">12 mã quyền chuẩn</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="min-width: 260px;">Quyền chức năng (Permission)</th>
+                        <th style="min-width: 140px;">Mã quyền (Claim)</th>
+                        @foreach (var role in roles)
+                        {
+                            <th class="text-center" style="min-width: 165px;">
+                                <div class="fw-bold text-primary">@(role.DisplayName ?? role.Name)</div>
+                                <div class="small text-muted"><code>@role.Name</code></div>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var grp in groupedPermissions)
+                    {
+                        <tr class="table-secondary">
+                            <td colspan="@(2 + roles.Count)" class="fw-bold small text-uppercase py-1 px-3">
+                                <i class="bi bi-folder2-open me-1"></i> Nhóm nghiệp vụ: @grp.Key
+                            </td>
+                        </tr>
+                        @foreach (var perm in grp)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@perm.DisplayName</div>
+                                    <div class="small text-muted">@perm.Description</div>
+                                </td>
+                                <td><code class="text-dark fw-semibold">@perm.Code</code></td>
+                                @foreach (var role in roles)
+                                {
+                                    bool hasPerm = role.Name == "Admin" || role.RolePermissions.Any(rp => rp.PermissionId == perm.Id);
+                                    <td class="text-center">
+                                        @if (hasPerm)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                <i class="bi bi-check-lg"></i> Có quyền
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- BẢNG 2: CẬP NHẬT BỘ QUYỀN CHO TỪNG NHÓM CHỨC NĂNG -->
+<div class="row g-3 mb-4">
+    @foreach (var role in roles.Where(r => r.Name != "Admin"))
+    {
+        var currentPermIds = role.RolePermissions.Select(rp => rp.PermissionId).ToHashSet();
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-bold mb-0">@(role.DisplayName ?? role.Name) (<code>@role.Name</code>)</h6>
+                    <div class="small text-muted mt-1">@role.Description</div>
+                </div>
+                <div class="card-body">
+                    <form asp-action="UpdateRolePermissions" method="post">
+                        <input type="hidden" name="roleId" value="@role.Id" />
+                        <div class="mb-3" style="max-height: 260px; overflow-y: auto;">
+                            @foreach (var perm in permissions)
+                            {
+                                bool isChecked = currentPermIds.Contains(perm.Id);
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="permissionIds" value="@perm.Id" id="r_@(role.Id)_p_@(perm.Id)" @(isChecked ? "checked" : "") />
+                                    <label class="form-check-label small" for="r_@(role.Id)_p_@(perm.Id)">
+                                        <strong>@perm.DisplayName</strong> <code class="text-muted">(@perm.Code)</code>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-save me-1"></i> Lưu bộ quyền @role.Name
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- BẢNG 3: TỔNG HỢP NHÂN VIÊN, VAI TRÒ CHỨC NĂNG & PHẠM VI KHO (DATA SCOPE) -->
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="bi bi-building-check me-2 text-success"></i>2. Danh sách Nhân sự theo Nhóm Chức năng &amp; Phạm vi Kho được gán</h6>
+        <span class="badge bg-info-subtle text-info border">Cùng chức năng - Khác phạm vi dữ liệu</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Họ và tên</th>
+                        <th>Email đăng nhập</th>
+                        <th>Nhóm chức năng (Role)</th>
+                        <th>Phạm vi dữ liệu kho (UserWarehouseScope)</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in staffUsers)
+                    {
+                        <tr>
+                            <td>#@u.Id</td>
+                            <td class="fw-semibold">@u.FullName</td>
+                            <td><code>@u.Email</code></td>
+                            <td>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                    @(u.Role?.DisplayName ?? u.Role?.Name) (@u.Role?.Name)
+                                </span>
+                            </td>
+                            <td>
+                                @if (u.Role?.Name == "Admin")
+                                {
+                                    <span class="badge bg-dark">Toàn hệ thống (Bỏ qua bộ lọc - IsAdmin)</span>
+                                }
+                                else if (u.WarehouseScopes != null && u.WarehouseScopes.Any())
+                                {
+                                    foreach (var ws in u.WarehouseScopes)
+                                    {
+                                        <span class="badge bg-warning-subtle text-dark border me-1">
+                                            Kho #@ws.StoreId: @(ws.Store?.Name ?? $"Store {ws.StoreId}")
+                                        </span>
+                                    }
+                                }
+                                else if (u.Role?.Name == "Shipper")
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary">Lọc theo Chuyến giao được gán (ShipperUserId = @u.Id)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger small"><i class="bi bi-exclamation-circle"></i> Chưa gán phạm vi kho</span>
+                                }
+                            </td>
+                            <td>
+                                @if (u.IsActive)
+                                {
+                                    <span class="badge bg-success">Hoạt động</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Đã khóa</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a href="/Admin/Employees/Edit/@u.Id" class="btn btn-sm btn-outline-primary">
+                                    Sửa vai trò / Kho
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,133 @@
+@model List<BeautyShop.Services.TransitWaitingBatchItem>
+@{
+    ViewData["Title"] = "Hàng chờ tại kho trung chuyển (Hub Đà Nẵng)";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var hubStore = ViewBag.HubStore as BeautyShop.Models.Store;
+    var groupedByDestination = Model.GroupBy(m => m.FinalDestinationStoreId).ToList();
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h2 class="fw-800 mb-1" style="color:#1a1a2e;">
+            <i class="bi bi-diagram-3-fill text-warning me-2"></i>Hàng chờ tại Kho trung chuyển (Hub Đà Nẵng)
+        </h2>
+        <p class="text-muted mb-0">Các lô hàng đã tiếp nhận tại Hub, đang chờ gom tải cùng hướng để tạo chặng chuyển tiếp đến kho đích cuối cùng</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary fw-bold px-3 py-2 rounded-3 shadow-sm bg-white">
+            <i class="bi bi-receipt me-1"></i> Tất cả phiếu chuyển
+        </a>
+        <a asp-action="Create" class="btn btn-sm btn-primary fw-bold px-3 py-2 rounded-3 shadow-sm">
+            <i class="bi bi-plus-circle-fill me-1"></i> Tạo phiếu mới
+        </a>
+    </div>
+</div>
+
+<!-- THÔNG TIN VỊ TRÍ HUB -->
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%); border-left:5px solid #f59e0b !important;">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 p-3 text-warning bg-white shadow-sm">
+                    <i class="bi bi-building fs-2"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-1 text-dark">@(hubStore?.Name ?? "Kho miền Trung (Đà Nẵng)") — Trạm trung chuyển Hub</h5>
+                    <div class="text-muted small">
+                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>@(hubStore?.Address ?? "Đà Nẵng"), @(hubStore?.ProvinceName ?? "Thành phố Đà Nẵng")
+                        | Vị trí chiến lược kết nối luân chuyển liên miền Bắc - Trung - Nam - Tây Nguyên
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <span class="badge bg-warning text-dark px-3 py-2 fs-6 rounded-pill fw-bold">
+                <i class="bi bi-boxes me-1"></i> Đang chờ điều phối: @Model.Count lô hàng (@Model.Sum(m => m.TotalQuantity) SP)
+            </span>
+        </div>
+    </div>
+</div>
+
+@if (Model != null && Model.Any())
+{
+    foreach (var group in groupedByDestination)
+    {
+        var firstItem = group.First();
+        <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden bg-white">
+            <div class="card-header bg-light border-0 py-3 px-4 d-flex flex-wrap justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary rounded-pill px-3 py-2">Hướng vận chuyển tiếp theo</span>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-arrow-right-circle text-primary me-1"></i> Hướng về: <strong>@firstItem.FinalDestinationStoreName</strong>
+                    </h5>
+                </div>
+                <span class="small text-muted fw-bold">
+                    Gom được @group.Count() lô hàng (@group.Sum(g => g.TotalQuantity) sản phẩm cùng hướng)
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4 small fw-bold">Mã lô hàng</th>
+                            <th class="small fw-bold">Kho xuất phát ban đầu</th>
+                            <th class="small fw-bold">Phiếu đến Hub</th>
+                            <th class="small fw-bold">Thời gian đến Hub</th>
+                            <th class="small fw-bold">Sản phẩm trong lô</th>
+                            <th class="small fw-bold text-center">Tổng SL</th>
+                            <th class="pe-4 small fw-bold text-end">Thao tác điều phối</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var batch in group)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <strong class="text-primary font-monospace fs-6">@batch.BatchCode</strong>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-dark">@batch.OriginStoreName</div>
+                                </td>
+                                <td>
+                                    <a asp-action="Detail" asp-route-id="@batch.LastTransferId" class="text-decoration-none font-monospace small">
+                                        @batch.LastTransferCode
+                                    </a>
+                                </td>
+                                <td>
+                                    <div class="small fw-semibold text-dark">@batch.ArrivedAtHubDate.ToString("dd/MM/yyyy HH:mm")</div>
+                                </td>
+                                <td>
+                                    <ul class="list-unstyled mb-0 small">
+                                        @foreach (var line in batch.Items)
+                                        {
+                                            <li>
+                                                <i class="bi bi-check2 text-primary me-1"></i>
+                                                @line.Variant?.Product?.Name (@line.Quantity sp)
+                                            </li>
+                                        }
+                                    </ul>
+                                </td>
+                                <td class="text-center fw-bold text-primary fs-6">
+                                    @batch.TotalQuantity
+                                </td>
+                                <td class="pe-4 text-end">
+                                    <a asp-action="Create" asp-route-batchCode="@batch.BatchCode" class="btn btn-sm btn-primary fw-bold rounded-3 shadow-sm">
+                                        <i class="bi bi-send-fill me-1"></i> Tạo chặng tiếp theo
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+        <i class="bi bi-check-circle-fill text-success fs-1 mb-3"></i>
+        <h5 class="fw-bold text-dark">Không có kiện hàng nào đang tồn đọng tại Hub Đà Nẵng</h5>
+        <p class="text-muted mb-0">Tất cả các lô hàng trung chuyển đã được điều phối xuất kho đi các chặng tiếp theo hoàn tất.</p>
+    </div>
+}

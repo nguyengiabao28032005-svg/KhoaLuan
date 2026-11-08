@@ -1,0 +1,315 @@
+@model IEnumerable<BeautyShop.Models.Voucher>
+
+@{
+    ViewData["Title"] = "Quản lý Voucher";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    var now = DateTime.Now;
+    var currentKeyword = ViewBag.Keyword as string ?? "";
+    var currentStatus = ViewBag.Status as string ?? "";
+}
+
+<div class="adm-page">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h4 class="fw-bold text-dark mb-1">
+                <i class="bi bi-ticket-perforated-fill text-success me-2"></i>Quản Lý Mã Giảm Giá (Voucher)
+            </h4>
+            <p class="text-muted small mb-0">Thiết lập các chương trình khuyến mãi, mã giảm giá và theo dõi hiệu quả sử dụng</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Create" class="btn-ap">
+                <i class="bi bi-plus-circle-fill"></i> Tạo voucher mới
+            </a>
+        </div>
+    </div>
+
+    <!-- ALERT MESSAGE -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show border-0 rounded-3 shadow-sm mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- STATS / KPI CARDS -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 d-flex align-items-center gap-3">
+                <div class="stat-icon si-blue">
+                    <i class="bi bi-ticket-detailed"></i>
+                </div>
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase">Tổng mã đã tạo</span>
+                    <h4 class="fw-bold mb-0 text-dark">@(ViewBag.TotalVouchers ?? 0)</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 d-flex align-items-center gap-3">
+                <div class="stat-icon si-green">
+                    <i class="bi bi-broadcast"></i>
+                </div>
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase">Đang chạy</span>
+                    <h4 class="fw-bold mb-0 text-success">@(ViewBag.ActiveVouchers ?? 0)</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 d-flex align-items-center gap-3">
+                <div class="stat-icon si-orange">
+                    <i class="bi bi-bag-check"></i>
+                </div>
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase">Lượt đã dùng</span>
+                    <h4 class="fw-bold mb-0 text-warning">@(ViewBag.TotalUsedCount ?? 0)</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 d-flex align-items-center gap-3">
+                <div class="stat-icon si-red">
+                    <i class="bi bi-hourglass-bottom"></i>
+                </div>
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase">Hết hạn / Hết lượt</span>
+                    <h4 class="fw-bold mb-0 text-danger">@(ViewBag.DepletedOrExpired ?? 0)</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTER / SEARCH BAR -->
+    <div class="admin-card mb-4">
+        <div class="p-3">
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" name="keyword" class="form-control border-start-0" placeholder="Tìm kiếm theo mã hoặc tên voucher..." value="@currentKeyword" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- Tất cả trạng thái --</option>
+                        <option value="active" selected="@(currentStatus == "active")">Đang chạy (Hiệu lực & Còn lượt)</option>
+                        <option value="upcoming" selected="@(currentStatus == "upcoming")">Sắp diễn ra</option>
+                        <option value="depleted" selected="@(currentStatus == "depleted")">Hết lượt</option>
+                        <option value="expired" selected="@(currentStatus == "expired")">Hết hạn</option>
+                        <option value="inactive" selected="@(currentStatus == "inactive")">Đã tắt</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-dark w-100 fw-bold">
+                        <i class="bi bi-funnel me-1"></i> Lọc dữ liệu
+                    </button>
+                    @if (!string.IsNullOrEmpty(currentKeyword) || !string.IsNullOrEmpty(currentStatus))
+                    {
+                        <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại bộ lọc"><i class="bi bi-arrow-clockwise"></i></a>
+                    }
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- VOUCHER TABLE -->
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h5><i class="bi bi-list-check text-success"></i> Danh Sách Mã Giảm Giá</h5>
+            <span class="badge bg-light text-dark border">@Model.Count() mã hiển thị</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table admin-table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Mã</th>
+                        <th>Tên</th>
+                        <th>Giảm</th>
+                        <th>Đơn tối thiểu</th>
+                        <th class="text-center">Số lượng</th>
+                        <th class="text-center">Đã dùng</th>
+                        <th>HSD</th>
+                        <th class="text-center">Trạng thái</th>
+                        <th class="text-end pe-3">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            // Logic xác định trạng thái
+                            string statusText = "Đang chạy";
+                            string badgeClass = "badge bg-success";
+
+                            if (!item.IsActive)
+                            {
+                                statusText = "Đã tắt";
+                                badgeClass = "badge bg-secondary";
+                            }
+                            else if (now < item.StartDate)
+                            {
+                                statusText = "Sắp diễn ra";
+                                badgeClass = "badge bg-info text-dark";
+                            }
+                            else if (now > item.EndDate)
+                            {
+                                statusText = "Hết hạn";
+                                badgeClass = "badge bg-danger";
+                            }
+                            else if (item.TotalUsageLimit.HasValue && item.UsedCount >= item.TotalUsageLimit.Value)
+                            {
+                                statusText = "Hết lượt";
+                                badgeClass = "badge bg-warning text-dark";
+                            }
+
+                            int pctUsed = item.TotalUsageLimit.HasValue && item.TotalUsageLimit > 0
+                                ? (int)Math.Min(100, Math.Round((double)item.UsedCount / item.TotalUsageLimit.Value * 100))
+                                : 0;
+
+                            <tr>
+                                <!-- 1. Mã -->
+                                <td class="ps-3">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="badge bg-primary text-white font-monospace px-2 py-1 fs-6 shadow-sm">@item.Code</span>
+                                        <button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1 copy-btn" data-code="@item.Code" title="Sao chép mã">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </td>
+
+                                <!-- 2. Tên -->
+                                <td>
+                                    <div class="fw-bold text-dark">@(!string.IsNullOrEmpty(item.Name) ? item.Name : item.Code)</div>
+                                    <small class="text-muted">
+                                        @(item.Scope == "All" ? "Toàn bộ sản phẩm" : "Sản phẩm chọn")
+                                        • Tối đa @item.MaxUsesPerUser lần/khách
+                                    </small>
+                                </td>
+
+                                <!-- 3. Giảm -->
+                                <td>
+                                    @if (item.DiscountType == "Percent")
+                                    {
+                                        <div class="fw-bold text-danger fs-6">@item.DiscountValue.ToString("G29")%</div>
+                                        @if (item.MaxDiscountAmount.HasValue && item.MaxDiscountAmount.Value > 0)
+                                        {
+                                            <small class="text-muted d-block">Tối đa: @item.MaxDiscountAmount.Value.ToString("N0")đ</small>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="fw-bold text-danger fs-6">@item.DiscountValue.ToString("N0")đ</div>
+                                        <small class="text-muted">Tiền cố định</small>
+                                    }
+                                </td>
+
+                                <!-- 4. Đơn tối thiểu -->
+                                <td>
+                                    @if (item.MinOrderValue > 0)
+                                    {
+                                        <span class="fw-semibold">@item.MinOrderValue.ToString("N0")đ</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Không yêu cầu</span>
+                                    }
+                                </td>
+
+                                <!-- 5. Số lượng -->
+                                <td class="text-center">
+                                    @if (item.TotalUsageLimit.HasValue)
+                                    {
+                                        <span class="fw-bold">@item.TotalUsageLimit.Value</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">∞ Vô hạn</span>
+                                    }
+                                </td>
+
+                                <!-- 6. Đã dùng -->
+                                <td class="text-center" style="min-width: 110px;">
+                                    <div class="fw-bold">@item.UsedCount</div>
+                                    @if (item.TotalUsageLimit.HasValue && item.TotalUsageLimit > 0)
+                                    {
+                                        <div class="progress mt-1" style="height: 5px;" title="@pctUsed% đã dùng">
+                                            <div class="progress-bar @(pctUsed >= 100 ? "bg-danger" : pctUsed >= 75 ? "bg-warning" : "bg-success")" role="progressbar" style="width: @pctUsed%"></div>
+                                        </div>
+                                        <small class="text-muted" style="font-size: 10px;">@pctUsed% đã dùng</small>
+                                    }
+                                </td>
+
+                                <!-- 7. HSD -->
+                                <td>
+                                    <div class="small fw-semibold text-dark">@item.EndDate.ToString("dd/MM/yyyy")</div>
+                                    <small class="text-muted">Từ: @item.StartDate.ToString("dd/MM/yyyy")</small>
+                                </td>
+
+                                <!-- 8. Trạng thái -->
+                                <td class="text-center">
+                                    <span class="@badgeClass px-2 py-1">@statusText</span>
+                                </td>
+
+                                <!-- 9. Thao tác: [Sửa] [Xem] [Tắt/Bật] [Xóa] -->
+                                <td class="text-end pe-3">
+                                    <div class="btn-group btn-group-sm">
+                                        <!-- Nút Sửa -->
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary" title="Sửa thông tin voucher">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+
+                                        <!-- Nút Xem chi tiết -->
+                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-info text-dark" title="Xem chi tiết & thống kê">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        <!-- Nút Tắt/Bật -->
+                                        <a asp-action="ToggleStatus" asp-route-id="@item.Id" class="btn @(item.IsActive ? "btn-outline-warning" : "btn-outline-success")" title="@(item.IsActive ? "Tắt voucher" : "Kích hoạt voucher")">
+                                            <i class="bi @(item.IsActive ? "bi-toggle-on text-success" : "bi-toggle-off text-muted")"></i>
+                                        </a>
+
+                                        <!-- Nút Xóa -->
+                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger" onclick="return confirm('Bạn có chắc chắn muốn xóa vĩnh viễn mã \'@item.Code\'?')" title="Xóa bỏ">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted">
+                                <i class="bi bi-ticket-perforated fs-1 d-block mb-2 text-secondary"></i>
+                                Không tìm thấy chương trình voucher nào phù hợp.
+                                <div class="mt-2">
+                                    <a asp-action="Create" class="btn btn-sm btn-success">
+                                        <i class="bi bi-plus-circle me-1"></i>Tạo mã giảm giá mới
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('.copy-btn').on('click', function() {
+                var code = $(this).data('code');
+                navigator.clipboard.writeText(code).then(function() {
+                    alert('Đã sao chép mã: ' + code);
+                });
+            });
+        });
+    </script>
+}

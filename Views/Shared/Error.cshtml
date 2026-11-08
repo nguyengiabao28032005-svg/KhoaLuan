@@ -1,0 +1,100 @@
+﻿@model ErrorViewModel
+@{
+    ViewData["Title"] = "Đã xảy ra sự cố";
+}
+
+@section Styles {
+    <style>
+        .error-container {
+            min-height: 65vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .error-icon-box {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 25px;
+        }
+
+        .error-icon {
+            font-size: 6rem;
+            color: #ff6b6b;
+            line-height: 1;
+            animation: shakeError 0.5s ease-in-out;
+        }
+
+        @@keyframes shakeError {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px) rotate(-5deg); }
+            75% { transform: translateX(10px) rotate(5deg); }
+        }
+
+        .btn-back-home {
+            background-color: var(--hasaki-green);
+            color: #ffffff;
+            transition: var(--transition);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-back-home:hover {
+            background-color: var(--hasaki-green-light);
+            color: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 110, 74, 0.2);
+        }
+
+        /* Khung chứa thông tin debug ẩn mình xuống dưới */
+        .tech-details-box {
+            background-color: #f8f9fa;
+            border: 1px dashed #ced4da;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 40px;
+            text-align: left;
+        }
+    </style>
+}
+
+<div class="container error-container py-5">
+    <div class="text-center" style="max-width: 650px;">
+        
+        <div class="error-icon-box">
+            <i class="bi bi-emoji-frown error-icon"></i>
+        </div>
+
+        <h2 class="fw-bold mb-3 text-dark">Ôi không! Đã có lỗi xảy ra.</h2>
+        
+        <p class="text-secondary mb-4 fs-6" style="line-height: 1.6;">
+            Rất xin lỗi bạn, hệ thống BeautyShop đang gặp một chút gián đoạn trong quá trình xử lý yêu cầu. 
+            Đội ngũ kỹ thuật của chúng tôi đã ghi nhận sự cố này. Vui lòng quay lại trang chủ để tiếp tục mua sắm nhé!
+        </p>
+
+        <a asp-controller="Home" asp-action="Index" class="btn btn-back-home px-5 py-3 rounded-pill fw-bold">
+            <i class="bi bi-house-door-fill me-2"></i> Về trang chủ
+        </a>
+
+        @if (Model.ShowRequestId)
+        {
+            <div class="tech-details-box shadow-sm">
+                <h6 class="fw-bold text-danger mb-3">
+                    <i class="bi bi-bug-fill me-2"></i>Thông tin Debug (Development Mode)
+                </h6>
+                
+                <div class="d-flex align-items-center mb-3">
+                    <span class="text-muted small me-2">Request ID:</span>
+                    <code class="bg-white border rounded px-2 py-1 text-dark fw-bold">@Model.RequestId</code>
+                </div>
+                
+                <div class="alert alert-warning py-2 small mb-0 border-0" role="alert">
+                    <i class="bi bi-info-circle-fill me-1"></i> 
+                    Việc kích hoạt môi trường <strong>Development</strong> sẽ hiển thị các ngoại lệ (exception) chi tiết hơn. 
+                    Nhớ cấu hình lại biến <code>ASPNETCORE_ENVIRONMENT</code> khi đưa lên môi trường Production để bảo mật dữ liệu nhé!
+                </div>
+            </div>
+        }
+
+    </div>
+</div>
